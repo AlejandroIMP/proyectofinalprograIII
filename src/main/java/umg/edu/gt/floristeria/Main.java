@@ -1,5 +1,6 @@
 package umg.edu.gt.floristeria;
 
+import umg.edu.gt.floristeria.api.GraphRestApi;
 import umg.edu.gt.floristeria.hash.CustomHashTable;
 import umg.edu.gt.floristeria.hash.CustomHashTable.SearchResult;
 import umg.edu.gt.floristeria.model.ItemFloral;
@@ -201,5 +202,10 @@ public class Main {
     private static void banner(String title) {
         String line = "=".repeat(Math.max(title.length() + 4, 40));
         System.out.printf("%n%s%n  %s%n%s%n", line, title, line);
+
+        // Al final del método main de tu clase Main.java:
+        GraphRestApi.iniciarServidor();
     }
+
+
 }
