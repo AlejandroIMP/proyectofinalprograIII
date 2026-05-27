@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Floristeria UMG — Visualizador de Grafos</title>
+
+  <!-- Vis.js Network desde CDN (no requiere instalacion local) -->
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+
+  <style>
+    /* ── Reset y fuente ──────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #f0f4f8;
+      color: #1a202c;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── Encabezado ─────────────────────────────────────────── */
+    header {
+      background: linear-gradient(135deg, #2d6a4f 0%, #1b4332 100%);
+      color: #fff;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.25);
+      flex-shrink: 0;
+    }
+    header h1 { font-size: 1.15rem; font-weight: 600; letter-spacing: .3px; }
+    header .subtitle { font-size: .8rem; opacity: .8; }
+
+    /* ── Barra de controles ─────────────────────────────────── */
+    .toolbar {
+      background: #fff;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .toolbar label { font-size: .85rem; font-weight: 500; color: #4a5568; }
+    .toolbar select, .toolbar input[type="number"] {
+      border: 1px solid #cbd5e0;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: .9rem;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .toolbar select:focus, .toolbar input[type="number"]:focus {
+      border-color: #2d6a4f;
+      box-shadow: 0 0 0 3px rgba(45,106,79,.15);
+    }
+    .toolbar input[type="number"] { width: 90px; }
+    .btn-cargar {
+      background: #2d6a4f;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 7px 18px;
+      font-size: .9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .2s, transform .1s;
+    }
+    .btn-cargar:hover  { background: #1b4332; }
+    .btn-cargar:active { transform: scale(.97); }
+
+    /* ── Panel de estadisticas ──────────────────────────────── */
+    .stats {
+      display: flex;
+      gap: 18px;
+      margin-left: auto;
+      font-size: .83rem;
+      color: #718096;
+    }
+    .stats span { display: flex; align-items: center; gap: 4px; }
+    .stats strong { color: #2d3748; font-weight: 700; }
+
+    /* ── Mensaje de error ───────────────────────────────────── */
+    #error-msg {
+      display: none;
+      background: #fff5f5;
+      color: #c53030;
+      border-left: 4px solid #fc8181;
+      padding: 8px 16px;
+      font-size: .85rem;
+      flex-shrink: 0;
+    }
+
+    /* ── Contenedor del grafo ───────────────────────────────── */
+    #graph-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+    #graph {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Spinner de carga superpuesto */
+    #spinner {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,.7);
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      color: #2d6a4f;
+      font-weight: 600;
+    }
+    #spinner.activo { display: flex; }
+
+    /* Mensaje cuando el grafo esta vacio */
+    #vacio-msg {
+      display: none;
+      position: absolute;
+      inset: 0;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+      color: #a0aec0;
+      font-size: 1rem;
+      pointer-events: none;
+    }
+    #vacio-msg.visible { display: flex; }
+    #vacio-msg .icono { font-size: 3rem; }
+
+    /* ── Leyenda ─────────────────────────────────────────────── */
+    .leyenda {
+      background: #fff;
+      border-top: 1px solid #e2e8f0;
+      padding: 6px 20px;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      font-size: .8rem;
+      color: #4a5568;
+      flex-shrink: 0;
+    }
+    .leyenda-item { display: flex; align-items: center; gap: 6px; }
+    .dot {
+      width: 13px; height: 13px;
+      border-radius: 50%;
+      border: 2px solid;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════ ENCABEZADO ══════════════════ -->
+<header>
+  <span style="font-size:1.6rem">🌸</span>
+  <div>
+    <h1>Floristeria UMG — Visualizador de Grafos Comerciales</h1>
+    <div class="subtitle">Programacion III | Seccion A | Proyecto 2</div>
+  </div>
+</header>
+
+<!-- ══════════════════ BARRA DE CONTROLES ══════════════════ -->
+<div class="toolbar">
+  <label for="sel-consulta">Consulta:</label>
+  <select id="sel-consulta" onchange="actualizarPlaceholder()">
+    <option value="trazabilidad">Trazabilidad de Factura</option>
+    <option value="cliente-productos">Productos de Cliente</option>
+    <option value="proveedor-impacto">Impacto de Proveedor</option>
+  </select>
+
+  <label for="inp-id">ID:</label>
+  <input type="number" id="inp-id" value="1" min="1" placeholder="Ej: 1"
+         onkeydown="if(event.key==='Enter') cargarGrafo()" />
+
+  <button class="btn-cargar" onclick="cargarGrafo()">&#9654; Cargar</button>
+
+  <div class="stats">
+    <span>Nodos: <strong id="stat-nodos">0</strong></span>
+    <span>Aristas: <strong id="stat-aristas">0</strong></span>
+    <span>Tiempo: <strong id="stat-tiempo">—</strong></span>
+  </div>
+</div>
+
+<!-- ══════════════════ MENSAJE DE ERROR ══════════════════ -->
+<div id="error-msg"></div>
+
+<!-- ══════════════════ CANVAS DEL GRAFO ══════════════════ -->
+<div id="graph-container">
+  <div id="graph"></div>
+
+  <div id="spinner">Cargando grafo...</div>
+
+  <div id="vacio-msg">
+    <div class="icono">🌿</div>
+    <div>Sin datos para mostrar.</div>
+    <div style="font-size:.85rem">Verifica que Oracle este accesible y que el ID exista.</div>
+  </div>
+</div>
+
+<!-- ══════════════════ LEYENDA ══════════════════ -->
+<div class="leyenda">
+  <strong>Leyenda:</strong>
+  <div class="leyenda-item">
+    <div class="dot" style="background:#97C2FC; border-color:#2B7CE9;"></div> Cliente
+  </div>
+  <div class="leyenda-item">
+    <div class="dot" style="background:#FB7E81; border-color:#FA0A10; border-radius:2px;"></div> Factura
+  </div>
+  <div class="leyenda-item">
+    <div class="dot" style="background:#7BE141; border-color:#41A906; transform:rotate(45deg);"></div> Item Floral
+  </div>
+  <div class="leyenda-item">
+    <div class="dot" style="background:#FFCD37; border-color:#FFA500;"></div> Proveedor / Finca
+  </div>
+</div>
+
+<!-- ══════════════════ JAVASCRIPT ══════════════════ -->
+<script>
+  // ── Configuracion de la API ──────────────────────────────────────────────
+  const API_BASE = 'http://localhost:8085';
+
+  const CONSULTAS = {
+    'trazabilidad':      { param: 'factura',   placeholder: 'Ej: 1',  default: 1 },
+    'cliente-productos': { param: 'cliente',   placeholder: 'Ej: 1',  default: 1 },
+    'proveedor-impacto': { param: 'proveedor', placeholder: 'Ej: 5',  default: 5 }
+  };
+
+  // ── Opciones de visualizacion de Vis.js ─────────────────────────────────
+  const VIS_OPTIONS = {
+    groups: {
+      CLIENTE:   {
+        color: { background: '#97C2FC', border: '#2B7CE9', highlight: { background: '#d0e8ff', border: '#1a56c4' } },
+        shape: 'ellipse',
+        font:  { size: 13, face: 'Segoe UI, sans-serif' }
+      },
+      FACTURA:   {
+        color: { background: '#FB7E81', border: '#FA0A10', highlight: { background: '#ffd0d1', border: '#c70009' } },
+        shape: 'box',
+        font:  { size: 13, face: 'Segoe UI, sans-serif' }
+      },
+      ITEM:      {
+        color: { background: '#7BE141', border: '#41A906', highlight: { background: '#c8f5a4', border: '#2d7a04' } },
+        shape: 'diamond',
+        font:  { size: 13, face: 'Segoe UI, sans-serif' }
+      },
+      PROVEEDOR: {
+        color: { background: '#FFCD37', border: '#FFA500', highlight: { background: '#fff1a8', border: '#cc7a00' } },
+        shape: 'hexagon',
+        font:  { size: 13, face: 'Segoe UI, sans-serif' }
+      }
+    },
+    edges: {
+      arrows: { to: { enabled: true, scaleFactor: 0.9 } },
+      font:   { size: 11, color: '#555', align: 'middle' },
+      color:  { color: '#94a3b8', highlight: '#2d6a4f' },
+      smooth: { type: 'curvedCW', roundness: 0.15 }
+    },
+    nodes: {
+      borderWidth: 2,
+      shadow: { enabled: true, size: 4, x: 2, y: 2, color: 'rgba(0,0,0,.12)' }
+    },
+    physics: {
+      enabled: true,
+      barnesHut: { gravitationalConstant: -8000, springLength: 120, springConstant: 0.04 },
+      stabilization: { iterations: 250, updateInterval: 25 }
+    },
+    interaction: {
+      hover: true,
+      tooltipDelay: 150,
+      navigationButtons: true,
+      keyboard: { enabled: true }
+    },
+    layout: { improvedLayout: true }
+  };
+
+  // ── Estado global ────────────────────────────────────────────────────────
+  let network = null;
+
+  // ── Funciones de UI ──────────────────────────────────────────────────────
+  function actualizarPlaceholder() {
+    const tipo = document.getElementById('sel-consulta').value;
+    const cfg  = CONSULTAS[tipo];
+    const inp  = document.getElementById('inp-id');
+    inp.placeholder = cfg.placeholder;
+    inp.value       = cfg.default;
+  }
+
+  function mostrarError(msg) {
+    const el = document.getElementById('error-msg');
+    el.textContent = '⚠ ' + msg;
+    el.style.display = 'block';
+  }
+
+  function ocultarError() {
+    document.getElementById('error-msg').style.display = 'none';
+  }
+
+  function mostrarSpinner(visible) {
+    document.getElementById('spinner').classList.toggle('activo', visible);
+  }
+
+  function mostrarVacio(visible) {
+    document.getElementById('vacio-msg').classList.toggle('visible', visible);
+  }
+
+  function actualizarStats(nodos, aristas, tiempoMs) {
+    document.getElementById('stat-nodos').textContent   = nodos;
+    document.getElementById('stat-aristas').textContent = aristas;
+    document.getElementById('stat-tiempo').textContent  = tiempoMs + ' ms';
+  }
+
+  // ── Logica principal ─────────────────────────────────────────────────────
+  async function cargarGrafo() {
+    ocultarError();
+    mostrarVacio(false);
+
+    const tipo  = document.getElementById('sel-consulta').value;
+    const id    = parseInt(document.getElementById('inp-id').value, 10) || CONSULTAS[tipo].default;
+    const param = CONSULTAS[tipo].param;
+    const url   = `${API_BASE}/api/grafo/${tipo}?${param}=${id}`;
+
+    mostrarSpinner(true);
+    const t0 = Date.now();
+
+    let data;
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status} al llamar ${url}`);
+      data = await resp.json();
+    } catch (err) {
+      mostrarSpinner(false);
+      mostrarError(
+        'No se pudo conectar con la API REST. ' +
+        'Asegúrate de que la app Java está corriendo en localhost:8085. ' +
+        'Detalle: ' + err.message
+      );
+      return;
+    }
+
+    const tiempoMs = Date.now() - t0;
+    mostrarSpinner(false);
+
+    const nodos   = data.nodes  || [];
+    const aristas = data.edges  || [];
+
+    actualizarStats(nodos.length, aristas.length, tiempoMs);
+
+    if (nodos.length === 0) {
+      mostrarVacio(true);
+      if (network) network.setData({ nodes: [], edges: [] });
+      return;
+    }
+
+    // Vis.js espera datasets
+    const visNodes = new vis.DataSet(nodos);
+    const visEdges = new vis.DataSet(aristas);
+
+    const container = document.getElementById('graph');
+    if (!network) {
+      network = new vis.Network(container, { nodes: visNodes, edges: visEdges }, VIS_OPTIONS);
+    } else {
+      network.setData({ nodes: visNodes, edges: visEdges });
+    }
+
+    // Ajusta la vista cuando termina la fisica
+    network.once('stabilized', () => {
+      network.fit({ animation: { duration: 500, easingFunction: 'easeInOutQuad' } });
+    });
+  }
+
+  // ── Arranque ─────────────────────────────────────────────────────────────
+  // Carga automatica al abrir la pagina
+  window.addEventListener('DOMContentLoaded', () => {
+    actualizarPlaceholder();
+    cargarGrafo();
+  });
+</script>
+</body>
+</html>
