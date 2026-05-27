@@ -17,6 +17,8 @@ import umg.edu.gt.floristeria.hash.CustomHashTable.SearchResult;
 import umg.edu.gt.floristeria.model.ItemFloral;
 import umg.edu.gt.floristeria.model.ProveedorOrigen;
 import umg.edu.gt.floristeria.service.CatalogoSource;
+import umg.edu.gt.floristeria.service.CatalogoSources;
+import umg.edu.gt.floristeria.service.DatabaseCatalogoSource;
 import umg.edu.gt.floristeria.service.SyntheticCatalogoSource;
 
 import java.util.List;
@@ -52,11 +54,18 @@ public class HashTableApp extends Application {
     private static final Color  COLOR_HIT_FLASH    = Color.web("#2b7ce9");
     private static final Color  COLOR_MISS_FLASH   = Color.web("#c00000");
 
+    /** Etiquetas que aparecen en el ComboBox de selección de fuente. */
+    private static final String FUENTE_SINTETICO = "Sintético";
+    private static final String FUENTE_ORACLE    = "Oracle";
+
     /* ---- Estado ------------------------------------------------------ */
-    private CatalogoSource                            source  = new SyntheticCatalogoSource(DEFAULT_LOAD_COUNT);
+    private CatalogoSource                            source  = CatalogoSources.defaultSource(DEFAULT_LOAD_COUNT);
     private CustomHashTable<Integer, ItemFloral>      tabla;
     private CustomHashTable<Integer, ProveedorOrigen> marcas;
     private Rectangle[]                               slots;     // refs a los rectángulos del heatmap
+
+    /** Selector de fuente; se inicializa en {@link #buildToolbar()}. */
+    private ComboBox<String> cbFuente;
 
     /* ---- Widgets clave ----------------------------------------------- */
     private final GridPane     heatmap        = new GridPane();
@@ -71,10 +80,21 @@ public class HashTableApp extends Application {
 
     @Override
     public void start(Stage stage) {
-        recargar();   // carga inicial
-
+        // Construir UI ANTES de la carga inicial para que cbFuente exista
+        // si la carga falla y hay que mostrar un Alert / hacer fallback.
         BorderPane root = new BorderPane();
         root.setTop(buildToolbar());
+
+        // Carga inicial — si la fuente predeterminada es Oracle y falla,
+        // degradamos automáticamente a sintético para no dejar la GUI vacía.
+        try {
+            recargar();
+        } catch (RuntimeException ex) {
+            this.source = new SyntheticCatalogoSource(DEFAULT_LOAD_COUNT);
+            cbFuente.setValue(FUENTE_SINTETICO);
+            recargar();   // ya no debería fallar; si lo hace, propaga
+        }
+
         root.setCenter(buildHeatmapPane());
         root.setRight(buildSidePanel());
         root.setBottom(buildLogPane());
@@ -91,6 +111,12 @@ public class HashTableApp extends Application {
      * ==================================================================== */
 
     private HBox buildToolbar() {
+        cbFuente = new ComboBox<>();
+        cbFuente.getItems().addAll(FUENTE_SINTETICO, FUENTE_ORACLE);
+        cbFuente.setValue(source instanceof DatabaseCatalogoSource
+                ? FUENTE_ORACLE : FUENTE_SINTETICO);
+        cbFuente.valueProperty().addListener((obs, antes, nuevo) -> cambiarFuente(nuevo, antes));
+
         Button btnRecargar = new Button("Recargar catálogo");
         btnRecargar.setOnAction(e -> recargar());
 
@@ -106,11 +132,54 @@ public class HashTableApp extends Application {
         btnBuscar.setOnAction(e -> ejecutarBusqueda());
         tfBuscar.setOnAction(e -> ejecutarBusqueda());
 
-        HBox bar = new HBox(8, btnRecargar, btnInsertar, btnReportes,
-                            new Separator(), tfBuscar, btnBuscar);
+        HBox bar = new HBox(8,
+                new Label("Fuente:"), cbFuente, new Separator(),
+                btnRecargar, btnInsertar, btnReportes,
+                new Separator(), tfBuscar, btnBuscar);
         bar.setPadding(new Insets(0, 0, 10, 0));
         bar.setAlignment(Pos.CENTER_LEFT);
         return bar;
+    }
+
+    /**
+     * Maneja el cambio de selección del ComboBox de fuente. Si la nueva
+     * fuente falla al cargar (típicamente Oracle sin variables de entorno),
+     * muestra un Alert modal y revierte la selección a la anterior sin
+     * cambiar los datos cargados.
+     */
+    private void cambiarFuente(String nuevo, String anterior) {
+        if (nuevo == null || nuevo.equals(anterior)) return;
+
+        CatalogoSource nuevaFuente;
+        try {
+            nuevaFuente = FUENTE_ORACLE.equals(nuevo)
+                    ? DatabaseCatalogoSource.fromEnv()
+                    : new SyntheticCatalogoSource(DEFAULT_LOAD_COUNT);
+        } catch (IllegalStateException ise) {
+            mostrarErrorConexion("No se pudo cambiar a " + nuevo,
+                    ise.getMessage());
+            cbFuente.setValue(anterior);
+            return;
+        }
+
+        CatalogoSource fuenteAnterior = this.source;
+        this.source = nuevaFuente;
+        try {
+            recargar();
+        } catch (RuntimeException ex) {
+            // recargar() ya muestra su propio log; revertimos para que el
+            // usuario no quede con la fuente vacía.
+            this.source = fuenteAnterior;
+            cbFuente.setValue(anterior);
+        }
+    }
+
+    private void mostrarErrorConexion(String header, String detalle) {
+        Alert a = new Alert(Alert.AlertType.ERROR);
+        a.setTitle("Error de conexión");
+        a.setHeaderText(header);
+        a.setContentText(detalle);
+        a.showAndWait();
     }
 
     private void abrirVentanaReportes() {
@@ -185,7 +254,9 @@ public class HashTableApp extends Application {
                     + "  | marcas=" + marcas.getSize());
         } catch (Exception ex) {
             logLine("ERROR al recargar: " + ex.getMessage());
-            return;
+            mostrarErrorConexion("Error al cargar desde " + source.descripcion(),
+                    ex.getMessage());
+            throw new RuntimeException(ex);
         }
         renderHeatmap();
         refreshMetrics();

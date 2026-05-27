@@ -6,12 +6,20 @@ import umg.edu.gt.floristeria.hash.CustomHashTable.SearchResult;
 import umg.edu.gt.floristeria.model.ItemFloral;
 import umg.edu.gt.floristeria.model.ProveedorOrigen;
 import umg.edu.gt.floristeria.service.CatalogoSource;
+import umg.edu.gt.floristeria.service.CatalogoSources;
+import umg.edu.gt.floristeria.service.DatabaseCatalogoSource;
+import umg.edu.gt.floristeria.service.ReportExporter;
 import umg.edu.gt.floristeria.service.ReportService;
 import umg.edu.gt.floristeria.service.ReportService.ProductoMarcaRow;
 import umg.edu.gt.floristeria.service.ReportService.ProductoRow;
 import umg.edu.gt.floristeria.service.SyntheticCatalogoSource;
 import umg.edu.gt.floristeria.ui.HashTableApp;
+import umg.edu.gt.floristeria.util.Durations;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 /**
@@ -41,14 +49,17 @@ public class Main {
 
         banner("PROYECTO 2 - FLORISTERIA UMG | DEMO TABLA HASH PERSONALIZADA");
 
-        CatalogoSource source = new SyntheticCatalogoSource(TOTAL_ITEMS);
+        CatalogoSource source = seleccionarFuente(args);
         CustomHashTable<Integer, ItemFloral>       catalogo;
         CustomHashTable<Integer, ProveedorOrigen>  marcas;
         try {
             catalogo = source.cargar();
             marcas   = source.cargarMarcas();
         } catch (Exception ex) {
-            System.err.println("Error cargando catálogo: " + ex.getMessage());
+            System.err.println("ERROR cargando catálogo desde " + source.descripcion()
+                    + ": " + ex.getMessage());
+            System.err.println("Sugerencia: use --source=synth para forzar la fuente sintética.");
+            System.exit(2);
             return;
         }
         System.out.printf("Catálogo cargado: %s%n", source.descripcion());
@@ -58,12 +69,98 @@ public class Main {
         verificarReemplazoSinColision(catalogo);
 
         ReportService rs = new ReportService();
-        imprimirReporteProductos(rs.reporteProductos(catalogo), catalogo.getSize());
-        imprimirReporteProductoMarca(rs.reporteProductoMarca(catalogo, marcas),
-                                     catalogo.getSize());
+        List<ProductoRow>      filasProd = rs.reporteProductos(catalogo);
+        List<ProductoMarcaRow> filasPM   = rs.reporteProductoMarca(catalogo, marcas);
+        imprimirReporteProductos(filasProd);
+        imprimirReporteProductoMarca(filasPM);
+
+        exportarReportes(filasProd, filasPM);
 
         banner("FIN DE LA DEMOSTRACION");
         System.out.println("Tip: ejecuta con --gui (o `mvn javafx:run`) para los reportes completos.");
+
+        // API REST de la sección 4 - el servidor se mantiene escuchando en :8085
+        // hasta que el proceso reciba Ctrl+C. Si solo se desea la demo CLI,
+        // comentar esta línea.
+        GraphRestApi.iniciarServidor();
+    }
+
+    /* --------------------------------------------------------------------- */
+    /*  Selección de fuente de datos                                          */
+    /* --------------------------------------------------------------------- */
+
+    /**
+     * Resuelve la fuente de datos a usar según los argumentos de línea de
+     * comandos y las variables de entorno.
+     * <ul>
+     *   <li>{@code --source=oracle} fuerza Oracle. Si faltan variables de
+     *       entorno, sale con código 2.</li>
+     *   <li>{@code --source=synth} fuerza la fuente sintética aunque Oracle
+     *       esté configurado.</li>
+     *   <li>Sin flag: usa {@link CatalogoSources#defaultSource(int)}
+     *       (auto-detect por {@code ORACLE_URL}).</li>
+     * </ul>
+     */
+    private static CatalogoSource seleccionarFuente(String[] args) {
+        String override = null;
+        for (String a : args) {
+            if (a.startsWith("--source=")) {
+                override = a.substring("--source=".length());
+                break;
+            }
+        }
+
+        if ("oracle".equalsIgnoreCase(override)) {
+            try {
+                return DatabaseCatalogoSource.fromEnv();
+            } catch (IllegalStateException ise) {
+                System.err.println("ERROR: --source=oracle requiere variables de entorno: "
+                        + ise.getMessage());
+                System.exit(2);
+                throw ise; // inalcanzable; satisface al compilador
+            }
+        }
+        if ("synth".equalsIgnoreCase(override)) {
+            return new SyntheticCatalogoSource(TOTAL_ITEMS);
+        }
+        return CatalogoSources.defaultSource(TOTAL_ITEMS);
+    }
+
+    /* --------------------------------------------------------------------- */
+    /*  Export a CSV y JSON                                                   */
+    /* --------------------------------------------------------------------- */
+
+    /**
+     * Persiste ambos reportes en archivos {@code reports/4.x_*.csv|.json}
+     * relativos al directorio de trabajo actual. Los archivos siempre se
+     * sobrescriben para que cada corrida quede registrada con los tiempos
+     * más recientes.
+     */
+    private static void exportarReportes(List<ProductoRow> productos,
+                                          List<ProductoMarcaRow> productoMarca) {
+        banner("EXPORT DE REPORTES A CSV Y JSON");
+        Path dir = Paths.get("reports");
+        try {
+            Files.createDirectories(dir);
+            ReportExporter ex = new ReportExporter();
+
+            Path csvProd  = dir.resolve("4.1_productos.csv");
+            Path jsonProd = dir.resolve("4.1_productos.json");
+            Path csvPM    = dir.resolve("4.2_producto_marca.csv");
+            Path jsonPM   = dir.resolve("4.2_producto_marca.json");
+
+            ex.exportProductosCsv(productos, csvProd);
+            ex.exportProductosJson(productos, jsonProd);
+            ex.exportProductoMarcaCsv(productoMarca, csvPM);
+            ex.exportProductoMarcaJson(productoMarca, jsonPM);
+
+            System.out.println("   " + csvProd.toAbsolutePath());
+            System.out.println("   " + jsonProd.toAbsolutePath());
+            System.out.println("   " + csvPM.toAbsolutePath());
+            System.out.println("   " + jsonPM.toAbsolutePath());
+        } catch (IOException ioe) {
+            System.err.println("Error escribiendo reportes: " + ioe.getMessage());
+        }
     }
 
     /* --------------------------------------------------------------------- */
@@ -86,14 +183,16 @@ public class Main {
         int[] misses = { 9999, 7  };
         for (int id : hits) {
             SearchResult<ItemFloral> r = t.get(id);
-            System.out.printf("HIT  id=%-5d -> slot=%-3d probes=%-2d duracion=%6d ns  | %s%n",
-                    id, r.tablePosition(), r.probes(), r.durationNanoseconds(),
+            System.out.printf("HIT  id=%-5d -> slot=%-3d probes=%-2d duracion=%-12s | %s%n",
+                    id, r.tablePosition(), r.probes(),
+                    Durations.human(r.durationNanoseconds()),
                     r.value().nombreFlor());
         }
         for (int id : misses) {
             SearchResult<ItemFloral> r = t.get(id);
-            System.out.printf("MISS id=%-5d -> slot=%-3d probes=%-2d duracion=%6d ns  | (no encontrado)%n",
-                    id, r.tablePosition(), r.probes(), r.durationNanoseconds());
+            System.out.printf("MISS id=%-5d -> slot=%-3d probes=%-2d duracion=%-12s | (no encontrado)%n",
+                    id, r.tablePosition(), r.probes(),
+                    Durations.human(r.durationNanoseconds()));
         }
     }
 
@@ -119,11 +218,11 @@ public class Main {
     /*  Reporte 4.1 - Productos registrados                                   */
     /* --------------------------------------------------------------------- */
 
-    private static void imprimirReporteProductos(List<ProductoRow> filas, int totalCatalogo) {
+    private static void imprimirReporteProductos(List<ProductoRow> filas) {
         banner("REPORTE 4.1 - PRODUCTOS REGISTRADOS (clave hash, slot, tiempo)");
-        System.out.printf("%-6s %-30s %10s %12s %6s %8s %12s%n",
-                "ID", "NOMBRE", "PRECIO", "CLAVE_HASH", "SLOT", "PROBES", "TIEMPO_NS");
-        System.out.println("-".repeat(90));
+        System.out.printf("%-6s %-30s %10s %12s %6s %8s %14s%n",
+                "ID", "NOMBRE", "PRECIO", "CLAVE_HASH", "SLOT", "PROBES", "TIEMPO");
+        System.out.println("-".repeat(94));
 
         long totalNs = 0;
         long maxNs   = 0;
@@ -132,14 +231,14 @@ public class Main {
             totalNs += r.durationNs();
             if (r.durationNs() > maxNs) maxNs = r.durationNs();
             if (shown < FILAS_REPORTE_CLI) {
-                System.out.printf("%-6d %-30s %10.2f %12d %6d %8d %12d%n",
+                System.out.printf("%-6d %-30s %10.2f %12d %6d %8d %14s%n",
                         r.idProducto(),
                         truncar(r.nombreProducto(), 30),
                         r.precio(),
                         r.claveHash(),
                         r.slot(),
                         r.probes(),
-                        r.durationNs());
+                        Durations.human(r.durationNs()));
                 shown++;
             }
         }
@@ -148,20 +247,20 @@ public class Main {
                     filas.size() - FILAS_REPORTE_CLI);
         }
         long avgNs = filas.isEmpty() ? 0 : totalNs / filas.size();
-        System.out.println("-".repeat(90));
-        System.out.printf("Total filas: %d  |  Tiempo promedio: %d ns  |  Tiempo máximo: %d ns%n",
-                filas.size(), avgNs, maxNs);
+        System.out.println("-".repeat(94));
+        System.out.printf("Total filas: %d  |  Tiempo promedio: %s  |  Tiempo máximo: %s%n",
+                filas.size(), Durations.human(avgNs), Durations.human(maxNs));
     }
 
     /* --------------------------------------------------------------------- */
     /*  Reporte 4.2 - Producto y su marca                                     */
     /* --------------------------------------------------------------------- */
 
-    private static void imprimirReporteProductoMarca(List<ProductoMarcaRow> filas, int totalCatalogo) {
+    private static void imprimirReporteProductoMarca(List<ProductoMarcaRow> filas) {
         banner("REPORTE 4.2 - PRODUCTO Y SU MARCA (tiempo de búsqueda de marca)");
-        System.out.printf("%-6s %-26s %-26s %-12s %6s %12s%n",
-                "ID_P", "PRODUCTO", "MARCA", "PAIS", "SLOT_M", "TIEMPO_NS_M");
-        System.out.println("-".repeat(96));
+        System.out.printf("%-6s %-26s %-26s %-12s %6s %14s%n",
+                "ID_P", "PRODUCTO", "MARCA", "PAIS", "SLOT_M", "TIEMPO_MARCA");
+        System.out.println("-".repeat(98));
 
         long totalNs = 0;
         long maxNs   = 0;
@@ -170,13 +269,13 @@ public class Main {
             totalNs += r.marcaDurationNs();
             if (r.marcaDurationNs() > maxNs) maxNs = r.marcaDurationNs();
             if (shown < FILAS_REPORTE_CLI) {
-                System.out.printf("%-6d %-26s %-26s %-12s %6d %12d%n",
+                System.out.printf("%-6d %-26s %-26s %-12s %6d %14s%n",
                         r.idProducto(),
                         truncar(r.nombreProducto(), 26),
                         truncar(r.nombreMarca(), 26),
                         truncar(r.paisMarca(), 12),
                         r.slotMarca(),
-                        r.marcaDurationNs());
+                        Durations.human(r.marcaDurationNs()));
                 shown++;
             }
         }
@@ -185,9 +284,9 @@ public class Main {
                     filas.size() - FILAS_REPORTE_CLI);
         }
         long avgNs = filas.isEmpty() ? 0 : totalNs / filas.size();
-        System.out.println("-".repeat(96));
-        System.out.printf("Total filas: %d  |  Tiempo promedio de búsqueda de marca: %d ns  |  Máximo: %d ns%n",
-                filas.size(), avgNs, maxNs);
+        System.out.println("-".repeat(98));
+        System.out.printf("Total filas: %d  |  Tiempo promedio búsqueda marca: %s  |  Máximo: %s%n",
+                filas.size(), Durations.human(avgNs), Durations.human(maxNs));
     }
 
     /* --------------------------------------------------------------------- */
@@ -202,10 +301,5 @@ public class Main {
     private static void banner(String title) {
         String line = "=".repeat(Math.max(title.length() + 4, 40));
         System.out.printf("%n%s%n  %s%n%s%n", line, title, line);
-
-        // Al final del método main de tu clase Main.java:
-        GraphRestApi.iniciarServidor();
     }
-
-
 }
