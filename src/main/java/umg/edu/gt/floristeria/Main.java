@@ -190,14 +190,24 @@ public class Main {
 
     private static void ejecutarBusquedas(CustomHashTable<Integer, ItemFloral> t) {
         banner("BUSQUEDAS - 3 HITS + 2 MISSES");
-        int[] hits   = { 1000, 1099, 1199 };
-        int[] misses = { 9999, 7  };
-        for (int id : hits) {
+
+        // Toma los 3 primeros IDs reales de la tabla (funciona con Oracle y con datos sintéticos)
+        var entradas = t.entries();
+        List<Integer> hitsIds = entradas.stream()
+                .map(CustomHashTable.Entry::key)
+                .distinct()
+                .limit(3)
+                .toList();
+
+        // Miss: IDs que con certeza no existen (negativos o muy grandes)
+        int[] misses = { -1, Integer.MAX_VALUE };
+
+        for (int id : hitsIds) {
             SearchResult<ItemFloral> r = t.get(id);
+            String nombre = r.value() != null ? r.value().nombreFlor() : "(nulo)";
             System.out.printf("HIT  id=%-5d -> slot=%-3d probes=%-2d duracion=%-12s | %s%n",
                     id, r.tablePosition(), r.probes(),
-                    Durations.human(r.durationNanoseconds()),
-                    r.value().nombreFlor());
+                    Durations.human(r.durationNanoseconds()), nombre);
         }
         for (int id : misses) {
             SearchResult<ItemFloral> r = t.get(id);
@@ -209,20 +219,34 @@ public class Main {
 
     private static void verificarReemplazoSinColision(CustomHashTable<Integer, ItemFloral> t) {
         banner("PRUEBA DE REEMPLAZO (debe mantener size y collisionCount)");
+
+        // Toma el primer ID real disponible en la tabla (funciona con Oracle y con datos sintéticos)
+        var entradas = t.entries();
+        if (entradas.isEmpty()) {
+            System.out.println("   Tabla vacía — prueba de reemplazo omitida.");
+            return;
+        }
+        int idPrueba = entradas.get(0).key();
+
         int sizeAntes       = t.getSize();
         int colisionesAntes = t.getCollisionCount();
-        ItemFloral original    = t.get(1050).value();
-        ItemFloral actualizado = new ItemFloral(1050, "Rosa Imperial PROMOCION",
-                                                5.00, original.idProveedor());
-        t.put(1050, actualizado);
+        ItemFloral original    = t.get(idPrueba).value();
+        ItemFloral actualizado = new ItemFloral(idPrueba, original.nombreFlor() + " [PROMO]",
+                                                original.precio() * 0.90,   // 10 % descuento
+                                                original.idProveedor());
+        t.put(idPrueba, actualizado);
+        System.out.printf("   ID de prueba: %d%n", idPrueba);
         System.out.printf("   Antes  -> size=%d  colisiones=%d  nombre=%s%n",
                 sizeAntes, colisionesAntes, original.nombreFlor());
         System.out.printf("   Despues-> size=%d  colisiones=%d  nombre=%s%n",
-                t.getSize(), t.getCollisionCount(), t.get(1050).value().nombreFlor());
+                t.getSize(), t.getCollisionCount(), t.get(idPrueba).value().nombreFlor());
         System.out.printf("   Resultado: size %s | colisiones %s | valor %s%n",
-                t.getSize() == sizeAntes               ? "OK" : "FAIL",
+                t.getSize() == sizeAntes                 ? "OK" : "FAIL",
                 t.getCollisionCount() == colisionesAntes ? "OK" : "FAIL",
-                "Rosa Imperial PROMOCION".equals(t.get(1050).value().nombreFlor()) ? "OK" : "FAIL");
+                t.get(idPrueba).value().nombreFlor().endsWith("[PROMO]") ? "OK" : "FAIL");
+
+        // Restaurar el valor original para no corromper los reportes
+        t.put(idPrueba, original);
     }
 
     /* --------------------------------------------------------------------- */
