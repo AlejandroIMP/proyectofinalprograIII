@@ -18,6 +18,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Year;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Servidor HTTP nativo (com.sun.net.httpserver) que expone la API REST
@@ -230,7 +231,7 @@ public class GraphRestApi {
             sb.append("  \"size\": ").append(catalogoRef.getSize()).append(",\n");
             sb.append("  \"collisionCount\": ").append(catalogoRef.getCollisionCount()).append(",\n");
             double lf = (double) catalogoRef.getSize() / catalogoRef.getCapacity();
-            sb.append(String.format("  \"loadFactor\": \"%.4f\",\n", lf));
+            sb.append(String.format(Locale.ROOT, "  \"loadFactor\": \"%.4f\",\n", lf));
             sb.append("  \"entries\": [\n");
             var entries = catalogoRef.entries();
             for (int i = 0; i < entries.size(); i++) {
@@ -238,7 +239,7 @@ public class GraphRestApi {
                 ItemFloral item = (ItemFloral) e.value();
                 String nombre = item.nombreFlor() == null ? ""
                         : item.nombreFlor().replace("\"", "\\\"");
-                sb.append(String.format(
+                sb.append(String.format(Locale.ROOT,
                         "    {\"slot\": %d, \"id\": %d, \"nombre\": \"%s\", \"precio\": %.2f, \"idProveedor\": %d}",
                         e.slot(), item.id(), nombre, item.precio(), item.idProveedor()));
                 if (i < entries.size() - 1) sb.append(",\n");
@@ -262,7 +263,7 @@ public class GraphRestApi {
             sb.append("  \"size\": ").append(marcasRef.getSize()).append(",\n");
             sb.append("  \"collisionCount\": ").append(marcasRef.getCollisionCount()).append(",\n");
             double lf = (double) marcasRef.getSize() / marcasRef.getCapacity();
-            sb.append(String.format("  \"loadFactor\": \"%.4f\",\n", lf));
+            sb.append(String.format(Locale.ROOT, "  \"loadFactor\": \"%.4f\",\n", lf));
             sb.append("  \"entries\": [\n");
             var entries = marcasRef.entries();
             for (int i = 0; i < entries.size(); i++) {

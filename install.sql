@@ -20,19 +20,19 @@ PROMPT =======================================================
 -- ---------------------------------------------------------------------
 BEGIN
     FOR t IN (SELECT 'DROP TABLE ' || table_name
-                     || ' CASCADE CONSTRAINTS PURGE' AS sql
+                     || ' CASCADE CONSTRAINTS PURGE' AS ddl
               FROM   user_tables
               WHERE  table_name IN ('DETALLE_FACTURA','FACTURA','ITEM_FLORAL',
                                     'PROVEEDOR_ORIGEN','CLIENTE','TIPO_CLIENTE'))
     LOOP
-        EXECUTE IMMEDIATE t.sql;
+        EXECUTE IMMEDIATE t.ddl;
     END LOOP;
 
-    FOR s IN (SELECT 'DROP SEQUENCE ' || sequence_name AS sql
+    FOR s IN (SELECT 'DROP SEQUENCE ' || sequence_name AS ddl
               FROM   user_sequences
               WHERE  sequence_name LIKE 'SEQ\_%' ESCAPE '\')
     LOOP
-        EXECUTE IMMEDIATE s.sql;
+        EXECUTE IMMEDIATE s.ddl;
     END LOOP;
 END;
 /
