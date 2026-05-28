@@ -49,7 +49,7 @@ public class DatabaseCatalogoSource implements CatalogoSource {
      * @throws IllegalStateException si alguna variable falta.
      */
     public static DatabaseCatalogoSource fromEnv() {
-        String url  = oracleProp("ORACLE_URL");
+        String url  = normalizarUrl(oracleProp("ORACLE_URL"));
         String usr  = oracleProp("ORACLE_USER");
         String pwd  = oracleProp("ORACLE_PASS");
         if (url == null || usr == null || pwd == null) {
@@ -58,6 +58,7 @@ public class DatabaseCatalogoSource implements CatalogoSource {
                   + "(ORACLE_URL / ORACLE_USER / ORACLE_PASS) "
                   + "o como propiedades JVM (-DORACLE_URL=... en VM Options del IDE).");
         }
+        System.out.println("[Oracle] URL normalizada: " + sanitizar(url));
         return new DatabaseCatalogoSource(url, usr, pwd);
     }
 
@@ -69,6 +70,26 @@ public class DatabaseCatalogoSource implements CatalogoSource {
     private static String oracleProp(String nombre) {
         String v = System.getenv(nombre);
         return (v != null && !v.isBlank()) ? v : System.getProperty(nombre);
+    }
+
+    /**
+     * Asegura que la URL tenga el prefijo JDBC completo.
+     * <p>
+     * Acepta cualquiera de estas formas y las convierte a la forma canónica:
+     * <ul>
+     *   <li>{@code jdbc:oracle:thin:@//host:port/service} — ya correcta, se deja igual</li>
+     *   <li>{@code //host:port/service}  → añade {@code jdbc:oracle:thin:@}</li>
+     *   <li>{@code host:port/service}    → añade {@code jdbc:oracle:thin:@//}</li>
+     *   <li>{@code host:port:SID}        → añade {@code jdbc:oracle:thin:@}</li>
+     * </ul>
+     */
+    static String normalizarUrl(String url) {
+        if (url == null) return null;
+        url = url.trim();
+        if (url.startsWith("jdbc:")) return url;                        // ya correcta
+        if (url.startsWith("@"))    return "jdbc:oracle:thin:" + url;   // falta solo el driver prefix
+        if (url.startsWith("//"))   return "jdbc:oracle:thin:@" + url;  // falta driver + @
+        return "jdbc:oracle:thin:@//" + url;                            // solo host:port/service
     }
 
     @Override
