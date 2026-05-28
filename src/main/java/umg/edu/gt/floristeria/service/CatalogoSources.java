@@ -32,9 +32,15 @@ public final class CatalogoSources {
         return new SyntheticCatalogoSource(syntheticCount);
     }
 
-    /** @return {@code true} si {@code ORACLE_URL} está definido en el entorno. */
+    /**
+     * @return {@code true} si {@code ORACLE_URL} está definida, ya sea como
+     *         variable de entorno del SO o como propiedad JVM ({@code -DORACLE_URL=...}).
+     */
     public static boolean oracleConfigurado() {
         String url = System.getenv("ORACLE_URL");
+        if (url == null || url.isBlank()) {
+            url = System.getProperty("ORACLE_URL");
+        }
         return url != null && !url.isBlank();
     }
 }

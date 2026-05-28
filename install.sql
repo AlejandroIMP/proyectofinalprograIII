@@ -127,32 +127,106 @@ INSERT INTO TIPO_CLIENTE VALUES (2, 'Mayorista Alianzas',   10.50);
 INSERT INTO TIPO_CLIENTE VALUES (3, 'Eventos Premium',       5.00);
 INSERT INTO TIPO_CLIENTE VALUES (4, 'Floristería Afiliada', 15.00);
 
+-- ── Proveedores (4 países) ──────────────────────────────────────────
 INSERT INTO PROVEEDOR_ORIGEN VALUES (5, 'Finca Países Bajos S.A.',  'Holanda');
 INSERT INTO PROVEEDOR_ORIGEN VALUES (6, 'Floricola Quiteña',        'Ecuador');
 INSERT INTO PROVEEDOR_ORIGEN VALUES (7, 'Cooperativa Antigua',      'Guatemala');
+INSERT INTO PROVEEDOR_ORIGEN VALUES (8, 'Hacienda Cundinamarca',    'Colombia');
 
-INSERT INTO CLIENTE VALUES (101, '458921-5', 'Alejandro Sian',   'Chimaltenango, Guatemala', 2);
-INSERT INTO CLIENTE VALUES (102, '770115-K', 'Eventos Sky S.A.', 'Zona 10, Guatemala',       3);
+-- ── Clientes (5 clientes de distintos tipos) ────────────────────────
+INSERT INTO CLIENTE VALUES (101, '458921-5', 'Alejandro Sian',        'Chimaltenango, Guatemala', 2);
+INSERT INTO CLIENTE VALUES (102, '770115-K', 'Eventos Sky S.A.',       'Zona 10, Guatemala',       3);
+INSERT INTO CLIENTE VALUES (103, '112233-4', 'Maria Lopez Flores',     'Zona 1, Quetzaltenango',   1);
+INSERT INTO CLIENTE VALUES (104, '556677-8', 'Floristeria El Jardin',  'Zona 14, Guatemala',       4);
+INSERT INTO CLIENTE VALUES (105, '998877-6', 'Hotel Gran Vista',       'Antigua Guatemala',        3);
 
+-- ── Items florales (10 productos, 4 proveedores) ────────────────────
 INSERT INTO ITEM_FLORAL VALUES (50, 'Tulipanes Holandeses Premium', 25.00, 5);
 INSERT INTO ITEM_FLORAL VALUES (51, 'Rosas Ecuatorianas Long Stem', 18.50, 6);
 INSERT INTO ITEM_FLORAL VALUES (52, 'Arreglo Funerario Estándar',   80.00, 7);
 INSERT INTO ITEM_FLORAL VALUES (53, 'Centro de Mesa Mixto',         55.00, 5);
+INSERT INTO ITEM_FLORAL VALUES (54, 'Girasoles Colombianos',        12.00, 8);
+INSERT INTO ITEM_FLORAL VALUES (55, 'Orquídeas Guatemaltecas',      45.00, 7);
+INSERT INTO ITEM_FLORAL VALUES (56, 'Rosas Rojas Premium',          22.00, 5);
+INSERT INTO ITEM_FLORAL VALUES (57, 'Lirios del Valle',             16.00, 6);
+INSERT INTO ITEM_FLORAL VALUES (58, 'Claveles Colombianos',          8.00, 8);
+INSERT INTO ITEM_FLORAL VALUES (59, 'Margaritas Mixtas',             6.50, 7);
 
+-- ── Facturas (10 facturas: 2024, 2025, 2026 para cubrir rango de años) ──
 INSERT INTO FACTURA (id_factura, fecha_emision, id_cliente, serie, numero_documento)
 VALUES (2001, TO_DATE('2024-05-12','YYYY-MM-DD'), 101, 'A', 1023);
 INSERT INTO FACTURA (id_factura, fecha_emision, id_cliente, serie, numero_documento)
 VALUES (2002, TO_DATE('2025-02-14','YYYY-MM-DD'), 102, 'A', 1024);
+INSERT INTO FACTURA (id_factura, fecha_emision, id_cliente, serie, numero_documento)
+VALUES (2003, TO_DATE('2024-03-20','YYYY-MM-DD'), 101, 'A', 1025);
+INSERT INTO FACTURA (id_factura, fecha_emision, id_cliente, serie, numero_documento)
+VALUES (2004, TO_DATE('2024-08-15','YYYY-MM-DD'), 103, 'A', 1026);
+INSERT INTO FACTURA (id_factura, fecha_emision, id_cliente, serie, numero_documento)
+VALUES (2005, TO_DATE('2024-11-30','YYYY-MM-DD'), 104, 'B', 2001);
+INSERT INTO FACTURA (id_factura, fecha_emision, id_cliente, serie, numero_documento)
+VALUES (2006, TO_DATE('2025-01-14','YYYY-MM-DD'), 101, 'A', 1027);
+INSERT INTO FACTURA (id_factura, fecha_emision, id_cliente, serie, numero_documento)
+VALUES (2007, TO_DATE('2025-04-22','YYYY-MM-DD'), 103, 'A', 1028);
+INSERT INTO FACTURA (id_factura, fecha_emision, id_cliente, serie, numero_documento)
+VALUES (2008, TO_DATE('2025-06-10','YYYY-MM-DD'), 105, 'B', 2002);
+INSERT INTO FACTURA (id_factura, fecha_emision, id_cliente, serie, numero_documento)
+VALUES (2009, TO_DATE('2025-09-03','YYYY-MM-DD'), 104, 'B', 2003);
+INSERT INTO FACTURA (id_factura, fecha_emision, id_cliente, serie, numero_documento)
+VALUES (2010, TO_DATE('2026-02-28','YYYY-MM-DD'), 102, 'A', 1029);
 
-INSERT INTO DETALLE_FACTURA VALUES (1, 2001, 50, 12, 300.00);
-INSERT INTO DETALLE_FACTURA VALUES (2, 2002, 51, 50, 925.00);
+-- ── Detalles (25 líneas, múltiples ítems por factura) ───────────────
+-- Factura 2001 – Alejandro, may-2024: tulipanes + rosas + centro de mesa
+INSERT INTO DETALLE_FACTURA VALUES ( 1, 2001, 50, 12,  300.00);
+INSERT INTO DETALLE_FACTURA VALUES ( 2, 2001, 56,  5,  110.00);
+INSERT INTO DETALLE_FACTURA VALUES ( 3, 2001, 53,  2,  110.00);
+
+-- Factura 2002 – Eventos Sky, feb-2025: rosas ecuat. + orquídeas + claveles
+INSERT INTO DETALLE_FACTURA VALUES ( 4, 2002, 51, 50,  925.00);
+INSERT INTO DETALLE_FACTURA VALUES ( 5, 2002, 55,  3,  135.00);
+INSERT INTO DETALLE_FACTURA VALUES ( 6, 2002, 58, 10,   80.00);
+
+-- Factura 2003 – Alejandro, mar-2024: arreglo funerario + girasoles
+INSERT INTO DETALLE_FACTURA VALUES ( 7, 2003, 52,  1,   80.00);
+INSERT INTO DETALLE_FACTURA VALUES ( 8, 2003, 54,  8,   96.00);
+
+-- Factura 2004 – Maria Lopez, ago-2024: tulipanes + lirios
+INSERT INTO DETALLE_FACTURA VALUES ( 9, 2004, 50,  6,  150.00);
+INSERT INTO DETALLE_FACTURA VALUES (10, 2004, 57,  4,   64.00);
+
+-- Factura 2005 – El Jardin, nov-2024: rosas ecuat. + orquídeas + margaritas
+INSERT INTO DETALLE_FACTURA VALUES (11, 2005, 51, 20,  370.00);
+INSERT INTO DETALLE_FACTURA VALUES (12, 2005, 55,  2,   90.00);
+INSERT INTO DETALLE_FACTURA VALUES (13, 2005, 59, 30,  195.00);
+
+-- Factura 2006 – Alejandro, ene-2025: rosas premium + claveles
+INSERT INTO DETALLE_FACTURA VALUES (14, 2006, 56,  8,  176.00);
+INSERT INTO DETALLE_FACTURA VALUES (15, 2006, 58, 15,  120.00);
+
+-- Factura 2007 – Maria Lopez, abr-2025: tulipanes + arreglo funerario
+INSERT INTO DETALLE_FACTURA VALUES (16, 2007, 50, 10,  250.00);
+INSERT INTO DETALLE_FACTURA VALUES (17, 2007, 52,  1,   80.00);
+
+-- Factura 2008 – Hotel Gran Vista, jun-2025: centro de mesa + girasoles + lirios
+INSERT INTO DETALLE_FACTURA VALUES (18, 2008, 53,  3,  165.00);
+INSERT INTO DETALLE_FACTURA VALUES (19, 2008, 54,  5,   60.00);
+INSERT INTO DETALLE_FACTURA VALUES (20, 2008, 57,  6,   96.00);
+
+-- Factura 2009 – El Jardin, sep-2025: tulipanes + rosas premium + margaritas
+INSERT INTO DETALLE_FACTURA VALUES (21, 2009, 50, 15,  375.00);
+INSERT INTO DETALLE_FACTURA VALUES (22, 2009, 56,  4,   88.00);
+INSERT INTO DETALLE_FACTURA VALUES (23, 2009, 59, 20,  130.00);
+
+-- Factura 2010 – Eventos Sky, feb-2026: orquídeas + claveles
+INSERT INTO DETALLE_FACTURA VALUES (24, 2010, 55,  5,  225.00);
+INSERT INTO DETALLE_FACTURA VALUES (25, 2010, 58, 25,  200.00);
 
 COMMIT;
 
 PROMPT =======================================================
 PROMPT  Instalacion completa.
-PROMPT  Tablas: 6  |  Tipos cliente: 4  |  Proveedores: 3
-PROMPT  Items: 4   |  Clientes: 2       |  Facturas: 2
+PROMPT  Tablas: 6    |  Tipos cliente: 4    |  Proveedores: 4
+PROMPT  Items: 10    |  Clientes: 5         |  Facturas: 10
+PROMPT  Detalles: 25 |  Anos cubiertos: 2024-2026
 PROMPT =======================================================
 
 -- ================================================================

@@ -26,9 +26,15 @@ public class CommercialGraph {
     private final List<Nodo>   nodos   = new ArrayList<>();
     private final List<Arista> aristas = new ArrayList<>();
 
-    private final String url      = System.getenv("ORACLE_URL");
-    private final String user     = System.getenv("ORACLE_USER");
-    private final String password = System.getenv("ORACLE_PASS");
+    private final String url      = oracleProp("ORACLE_URL");
+    private final String user     = oracleProp("ORACLE_USER");
+    private final String password = oracleProp("ORACLE_PASS");
+
+    /** Lee la credencial como variable de entorno primero; si no existe, como propiedad JVM (-D). */
+    private static String oracleProp(String nombre) {
+        String v = System.getenv(nombre);
+        return (v != null && !v.isBlank()) ? v : System.getProperty(nombre);
+    }
 
     public List<Nodo>   getNodos()   { return nodos; }
     public List<Arista> getAristas() { return aristas; }

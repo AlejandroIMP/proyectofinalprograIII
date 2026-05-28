@@ -83,4 +83,48 @@
         </plugins>
     </build>
 
+
+    <!-- ================================================================
+         Perfil: dbfloristeria
+         Activa la conexión Oracle real con las credenciales de la VM UMG.
+         Uso NetBeans : clic derecho proyecto → Set Configuration → dbfloristeria
+         Uso terminal : mvn exec:java -Pdbfloristeria
+         ================================================================ -->
+    <profiles>
+        <profile>
+            <id>dbfloristeria</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.3.0</version>
+                        <configuration>
+                            <mainClass>umg.edu.gt.floristeria.Main</mainClass>
+                            <environmentVariables>
+                                <ORACLE_URL>jdbc:oracle:thin:@//localhost:1521/umg</ORACLE_URL>
+                                <ORACLE_USER>system</ORACLE_USER>
+                                <ORACLE_PASS>Umg$2026</ORACLE_PASS>
+                            </environmentVariables>
+                        </configuration>
+                    </plugin>
+                    <!-- JavaFX también hereda las variables al usar mvn javafx:run -Pdbfloristeria -->
+                    <plugin>
+                        <groupId>org.openjfx</groupId>
+                        <artifactId>javafx-maven-plugin</artifactId>
+                        <version>0.0.8</version>
+                        <configuration>
+                            <mainClass>umg.edu.gt.floristeria.ui.HashTableApp</mainClass>
+                            <options>
+                                <option>-DORACLE_URL=jdbc:oracle:thin:@//localhost:1521/umg</option>
+                                <option>-DORACLE_USER=system</option>
+                                <option>-DORACLE_PASS=Umg$2026</option>
+                            </options>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
 </project>

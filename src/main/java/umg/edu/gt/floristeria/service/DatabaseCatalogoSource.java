@@ -49,15 +49,26 @@ public class DatabaseCatalogoSource implements CatalogoSource {
      * @throws IllegalStateException si alguna variable falta.
      */
     public static DatabaseCatalogoSource fromEnv() {
-        String url  = System.getenv("ORACLE_URL");
-        String usr  = System.getenv("ORACLE_USER");
-        String pwd  = System.getenv("ORACLE_PASS");
+        String url  = oracleProp("ORACLE_URL");
+        String usr  = oracleProp("ORACLE_USER");
+        String pwd  = oracleProp("ORACLE_PASS");
         if (url == null || usr == null || pwd == null) {
             throw new IllegalStateException(
-                    "Faltan variables de entorno para Oracle. Defina ORACLE_URL, "
-                  + "ORACLE_USER y ORACLE_PASS antes de usar DatabaseCatalogoSource.");
+                    "Faltan credenciales Oracle. Defínalas como variables de entorno "
+                  + "(ORACLE_URL / ORACLE_USER / ORACLE_PASS) "
+                  + "o como propiedades JVM (-DORACLE_URL=... en VM Options del IDE).");
         }
         return new DatabaseCatalogoSource(url, usr, pwd);
+    }
+
+    /**
+     * Lee la credencial primero como variable de entorno del SO y, si no existe,
+     * como propiedad del sistema JVM ({@code -Dnombre=valor}).
+     * Esto permite configurarla desde cualquier IDE sin tocar el sistema operativo.
+     */
+    private static String oracleProp(String nombre) {
+        String v = System.getenv(nombre);
+        return (v != null && !v.isBlank()) ? v : System.getProperty(nombre);
     }
 
     @Override
