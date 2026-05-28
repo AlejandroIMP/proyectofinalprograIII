@@ -36,6 +36,13 @@
             <version>23.3.0.23.09</version>
         </dependency>
 
+        <!-- Apache POI (sección 4 - generación de reportes en Microsoft Word .docx) -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.2.5</version>
+        </dependency>
+
         <!-- Tests -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>

@@ -172,6 +172,45 @@
     /* ── Inputs de rango de años (ocultos por defecto) ─────────── */
     .anio-group { display: none; align-items: center; gap: 6px; }
     .anio-group.visible { display: flex; }
+
+    /* ── Formularios de alta (POST en vivo) ─────────────────────── */
+    .add-panel { background:#f8fbf9; border-bottom:1px solid #e2e8f0; padding:8px 18px; flex-shrink:0; }
+    details.add-panel > summary { cursor:pointer; font-weight:600; color:#2d6a4f; font-size:.88rem; outline:none; }
+    .add-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px; }
+    .add-row input, .add-row select {
+      border:1px solid #cbd5e0; border-radius:6px; padding:5px 9px; font-size:.85rem; outline:none;
+    }
+    .add-row input:focus, .add-row select:focus { border-color:#2d6a4f; }
+    .add-hint { font-size:.76rem; color:#a0aec0; margin-top:6px; }
+    .btn-sec {
+      background:#718096; color:#fff; border:none; border-radius:6px;
+      padding:5px 12px; font-size:.82rem; font-weight:600; cursor:pointer;
+    }
+    .btn-sec:hover { background:#4a5568; }
+    .item-row { display:flex; gap:8px; align-items:center; margin-top:6px; }
+    .btn-x { background:#fc8181; color:#fff; border:none; border-radius:6px; padding:4px 9px; cursor:pointer; font-weight:700; }
+
+    /* ── Banner de resultado de la operación hash ───────────────── */
+    .banner { display:none; padding:9px 16px; font-size:.86rem; font-weight:600; flex-shrink:0; border-left:4px solid; }
+    .banner.show { display:block; }
+    .banner.ok  { background:#f0fff4; color:#22683a; border-color:#5cb85c; }
+    .banner.col { background:#fffaf0; color:#9c4221; border-color:#f0ad4e; }
+    .banner.upd { background:#ebf8ff; color:#2c5282; border-color:#4299e1; }
+    .banner.reh { background:#faf5ff; color:#553c9a; border-color:#9f7aea; }
+    .banner.err { background:#fff5f5; color:#c53030; border-color:#fc8181; }
+
+    /* ── Resaltado del slot recién afectado ─────────────────────── */
+    tr.slot-highlight { animation: flash 2.2s ease-out; }
+    @keyframes flash { from { background:#fff3cd; } to { background:transparent; } }
+
+    /* ── Toast ──────────────────────────────────────────────────── */
+    #toast {
+      position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+      background:#2d3748; color:#fff; padding:10px 20px; border-radius:8px;
+      font-size:.88rem; box-shadow:0 4px 16px rgba(0,0,0,.3);
+      opacity:0; transition:opacity .3s; pointer-events:none; z-index:1000;
+    }
+    #toast.show { opacity:1; }
   </style>
 </head>
 <body>
@@ -232,6 +271,30 @@
     </div>
   </div>
 
+  <!-- Panel de alta de factura (POST en vivo → se refleja en el grafo) -->
+  <details class="add-panel">
+    <summary>➕ Crear nueva factura (se reflejará en el grafo)</summary>
+    <div class="add-row">
+      <label>Cliente:</label>
+      <select id="fac-cliente"><option value="">Cargando…</option></select>
+    </div>
+    <div id="fac-items"></div>
+    <div class="add-row">
+      <button class="btn-sec" onclick="agregarLineaItem()">➕ línea</button>
+      <button class="btn" onclick="crearFactura()">Crear factura y ver grafo</button>
+    </div>
+    <div class="add-hint">Elige un cliente, agrega ítems con su cantidad y crea la factura. La trazabilidad de la nueva factura se mostrará automáticamente.</div>
+  </details>
+
+  <!-- Reporte 4.3 en Word: recorrido del grafo por cliente y año -->
+  <div class="add-panel" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <strong style="color:#2d6a4f;font-size:.85rem">📄 Reporte 4.3 (Word):</strong>
+    <label>Cliente:</label>
+    <select id="rep-cliente"><option value="">Cargando…</option></select>
+    <button class="btn" onclick="descargarReporteGrafo()">Descargar .docx</button>
+    <span class="add-hint" style="margin:0">Facturas 2024-2026, detalles y productos del cliente.</span>
+  </div>
+
   <div class="error-bar" id="g-error"></div>
 
   <!-- Canvas -->
@@ -270,11 +333,13 @@
   <!-- Controles -->
   <div class="toolbar">
     <label for="sel-hash">Tabla:</label>
-    <select id="sel-hash">
+    <select id="sel-hash" onchange="onHashTipoChange()">
       <option value="catalogo">Catálogo de Ítems Florales</option>
       <option value="marcas">Proveedores / Marcas</option>
     </select>
     <button class="btn" onclick="cargarHash()">▶ Cargar</button>
+    <button class="btn-sec" onclick="descargarReporte('productos')">📄 Reporte 4.1 (Word)</button>
+    <button class="btn-sec" onclick="descargarReporte('producto-marca')">📄 Reporte 4.2 (Word)</button>
 
     <div class="stats">
       <span>Capacidad: <strong id="h-cap">—</strong></span>
@@ -284,6 +349,27 @@
     </div>
   </div>
 
+  <!-- Formulario de alta con detección de colisión -->
+  <div class="add-panel">
+    <div class="add-row" id="hash-add-catalogo">
+      <strong style="color:#2d6a4f;font-size:.85rem">➕ Agregar ítem:</strong>
+      <input type="number" id="add-id" placeholder="ID" style="width:80px"/>
+      <input type="text" id="add-nombre" placeholder="Nombre de la flor"/>
+      <input type="number" id="add-precio" placeholder="Precio" step="0.01" style="width:90px"/>
+      <input type="number" id="add-prov" placeholder="ID Proveedor" style="width:110px"/>
+      <button class="btn" onclick="agregarHash()">Agregar</button>
+    </div>
+    <div class="add-row" id="hash-add-marcas" style="display:none">
+      <strong style="color:#2d6a4f;font-size:.85rem">➕ Agregar proveedor:</strong>
+      <input type="number" id="addm-id" placeholder="ID" style="width:80px"/>
+      <input type="text" id="addm-finca" placeholder="Nombre de la finca"/>
+      <input type="text" id="addm-pais" placeholder="País"/>
+      <button class="btn" onclick="agregarHash()">Agregar</button>
+    </div>
+    <div class="add-hint">💡 Tip: con capacidad 101, IDs como 50 y 151 caen en el mismo slot → colisión garantizada.</div>
+  </div>
+
+  <div class="banner" id="h-banner"></div>
   <div class="error-bar" id="h-error"></div>
 
   <div id="hash-content">
@@ -292,6 +378,9 @@
     </p>
   </div>
 </div><!-- /panel-hash -->
+
+<!-- Toast de notificaciones -->
+<div id="toast"></div>
 
 <!-- ════════════════════════════════════════════════════════════════ -->
 <!--  JAVASCRIPT                                                      -->
@@ -328,6 +417,8 @@
   };
 
   let network = null;
+  let _slotResaltar = null;     // slot a resaltar tras un alta en la tabla hash
+  let _itemsCache   = null;     // cache de ítems del catálogo para los dropdowns
 
   /* ── Pestañas ─────────────────────────────────────────────────── */
   function cambiarTab(nombre, btn) {
@@ -483,8 +574,9 @@
         }
       }).join('');
 
+      const hl = (s === _slotResaltar) ? ' class="slot-highlight"' : '';
       html += `
-        <tr>
+        <tr${hl}>
           <td class="slot-num">${s}</td>
           <td><strong>${len}</strong></td>
           <td class="bar-cell">
@@ -498,6 +590,13 @@
       <p class="vacíos-info">${slotsVacios} de ${data.capacity} slots vacíos no se muestran</p>`;
 
     document.getElementById('hash-content').innerHTML = html;
+
+    // Desplazar a la fila resaltada, si la hay
+    if (_slotResaltar !== null) {
+      const fila = document.querySelector('tr.slot-highlight');
+      if (fila) fila.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      _slotResaltar = null;
+    }
   }
 
   function escHtml(s) {
@@ -505,10 +604,175 @@
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
+  /* ── Toast ───────────────────────────────────────────────────── */
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2600);
+  }
+
+  /* ════════════════════════════════════════════════════════════════
+     ALTA EN TABLA HASH (POST en vivo, con detección de colisión)
+     ════════════════════════════════════════════════════════════════ */
+  function onHashTipoChange() {
+    const tipo = document.getElementById('sel-hash').value;
+    document.getElementById('hash-add-catalogo').style.display = tipo === 'catalogo' ? 'flex' : 'none';
+    document.getElementById('hash-add-marcas').style.display   = tipo === 'marcas'   ? 'flex' : 'none';
+  }
+
+  function mostrarBanner(clase, texto) {
+    const b = document.getElementById('h-banner');
+    b.className = 'banner show ' + clase;
+    b.textContent = texto;
+  }
+
+  async function agregarHash() {
+    const tipo = document.getElementById('sel-hash').value;
+    const cuerpo = new URLSearchParams();
+
+    if (tipo === 'catalogo') {
+      const id = document.getElementById('add-id').value.trim();
+      const nombre = document.getElementById('add-nombre').value.trim();
+      const precio = document.getElementById('add-precio').value.trim();
+      const prov = document.getElementById('add-prov').value.trim();
+      if (!id || !nombre || !precio || !prov) { mostrarBanner('err', '⚠ Completa ID, nombre, precio e ID de proveedor.'); return; }
+      cuerpo.set('id', id); cuerpo.set('nombre', nombre);
+      cuerpo.set('precio', precio); cuerpo.set('idProveedor', prov);
+    } else {
+      const id = document.getElementById('addm-id').value.trim();
+      const finca = document.getElementById('addm-finca').value.trim();
+      const pais = document.getElementById('addm-pais').value.trim();
+      if (!id || !finca || !pais) { mostrarBanner('err', '⚠ Completa ID, nombre de finca y país.'); return; }
+      cuerpo.set('id', id); cuerpo.set('nombreFinca', finca); cuerpo.set('pais', pais);
+    }
+
+    let res;
+    try {
+      const r = await fetch(`${API}/api/hash/${tipo}`, { method: 'POST', body: cuerpo });
+      res = await r.json();
+    } catch (e) {
+      mostrarBanner('err', '⚠ No se pudo conectar con la API. ' + e.message);
+      return;
+    }
+
+    if (!res.ok) { mostrarBanner('err', '⚠ ' + (res.error || 'Error desconocido')); return; }
+
+    // Mensaje según el resultado
+    const oracle = res.persistidoEnOracle ? '' : ' (solo en memoria, sin Oracle)';
+    if (res.rehash) {
+      mostrarBanner('reh', `🔄 ¡REHASH! La tabla creció a capacidad ${res.capacity}. El ítem #${res.id} quedó en el slot ${res.slot}.${oracle}`);
+    } else if (res.esActualizacion) {
+      mostrarBanner('upd', `✎ Clave #${res.id} ya existía: se actualizó su valor en el slot ${res.slot} (no cuenta como colisión).${oracle}`);
+    } else if (res.colision) {
+      mostrarBanner('col', `⚠ ¡COLISIÓN! #${res.id} cayó en el slot ${res.slot}, que ahora encadena ${res.chainLength} elementos (claves: ${res.clavesEnSlot.join(', ')}).${oracle}`);
+    } else {
+      mostrarBanner('ok', `✓ #${res.id} insertado en el slot ${res.slot} SIN colisión (cadena: ${res.chainLength}).${oracle}`);
+    }
+
+    // Refrescar la tabla resaltando el slot afectado
+    _slotResaltar = res.slot;
+    _itemsCache = null;                  // invalidar cache de ítems
+    await cargarHash();
+  }
+
+  /* ════════════════════════════════════════════════════════════════
+     ALTA DE FACTURA (POST → se refleja en el grafo)
+     ════════════════════════════════════════════════════════════════ */
+  async function poblarClientes() {
+    const selects = ['fac-cliente', 'rep-cliente'].map(id => document.getElementById(id)).filter(Boolean);
+    try {
+      const r = await fetch(`${API}/api/clientes`);
+      const cs = await r.json();
+      const html = (!Array.isArray(cs) || cs.length === 0)
+        ? '<option value="">(sin clientes — ¿Oracle activo?)</option>'
+        : cs.map(c => `<option value="${c.id}">${c.id} — ${escHtml(c.nombre)}</option>`).join('');
+      selects.forEach(s => s.innerHTML = html);
+    } catch (e) {
+      selects.forEach(s => s.innerHTML = '<option value="">(API no disponible)</option>');
+    }
+  }
+
+  /* ── Descarga de reportes Word ───────────────────────────────── */
+  function descargarReporte(tipo) {            // 4.1 / 4.2 — reflejan la tabla hash actual
+    window.location.href = `${API}/api/reporte/${tipo}.docx`;
+  }
+  function descargarReporteGrafo() {           // 4.3 — recorrido por cliente
+    const cli = document.getElementById('rep-cliente').value;
+    if (!cli) { toast('Selecciona un cliente (¿Oracle activo?)'); return; }
+    window.location.href = `${API}/api/reporte/grafo-cliente.docx?cliente=${cli}`;
+  }
+
+  async function opcionesItems() {
+    if (_itemsCache) return _itemsCache;
+    try {
+      const r = await fetch(`${API}/api/hash/catalogo`);
+      const data = await r.json();
+      const items = (data.entries || []).slice().sort((a, b) => a.id - b.id);
+      _itemsCache = items.map(it => `<option value="${it.id}">${it.id} — ${escHtml(it.nombre)} ($${it.precio.toFixed(2)})</option>`).join('');
+    } catch (e) {
+      _itemsCache = '';
+    }
+    return _itemsCache;
+  }
+
+  async function agregarLineaItem() {
+    const cont = document.getElementById('fac-items');
+    const opts = await opcionesItems();
+    const fila = document.createElement('div');
+    fila.className = 'item-row';
+    fila.innerHTML =
+      `<label style="font-size:.82rem;color:#4a5568">Ítem:</label>
+       <select class="fac-item">${opts || '<option value="">(sin ítems)</option>'}</select>
+       <input type="number" class="fac-cant" value="1" min="1" style="width:70px" placeholder="Cant."/>
+       <button class="btn-x" onclick="this.parentNode.remove()">✕</button>`;
+    cont.appendChild(fila);
+  }
+
+  async function crearFactura() {
+    const cliente = document.getElementById('fac-cliente').value;
+    if (!cliente) { toast('Selecciona un cliente'); return; }
+
+    const filas = document.querySelectorAll('#fac-items .item-row');
+    const pares = [];
+    filas.forEach(f => {
+      const idItem = f.querySelector('.fac-item').value;
+      const cant = parseInt(f.querySelector('.fac-cant').value) || 0;
+      if (idItem && cant > 0) pares.push(`${idItem}:${cant}`);
+    });
+    if (pares.length === 0) { toast('Agrega al menos una línea de ítem'); return; }
+
+    const cuerpo = new URLSearchParams();
+    cuerpo.set('cliente', cliente);
+    cuerpo.set('items', pares.join(','));
+
+    let res;
+    try {
+      const r = await fetch(`${API}/api/grafo/factura`, { method: 'POST', body: cuerpo });
+      res = await r.json();
+    } catch (e) {
+      mostrarGError('No se pudo conectar con la API. ' + e.message);
+      return;
+    }
+
+    if (!res.ok) { mostrarGError(res.error || 'No se pudo crear la factura'); return; }
+
+    toast(`✓ Factura #${res.idFactura} creada`);
+
+    // Mostrar la trazabilidad de la nueva factura
+    document.getElementById('sel-consulta').value = 'trazabilidad';
+    onConsultaChange();
+    document.getElementById('inp-id').value = res.idFactura;
+    cargarGrafo();
+  }
+
   /* ── Arranque ────────────────────────────────────────────────── */
   window.addEventListener('DOMContentLoaded', () => {
     onConsultaChange();
-    cargarGrafo();   // carga automática al abrir
+    onHashTipoChange();
+    poblarClientes();
+    agregarLineaItem();   // una línea inicial en el formulario de factura
+    cargarGrafo();        // carga automática al abrir
   });
 </script>
 </body>

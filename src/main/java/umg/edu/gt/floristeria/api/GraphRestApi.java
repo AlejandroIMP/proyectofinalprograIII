@@ -9,16 +9,26 @@ import umg.edu.gt.floristeria.graph.Arista;
 import umg.edu.gt.floristeria.hash.CustomHashTable;
 import umg.edu.gt.floristeria.model.ItemFloral;
 import umg.edu.gt.floristeria.model.ProveedorOrigen;
+import umg.edu.gt.floristeria.service.ComercioDao;
+import umg.edu.gt.floristeria.service.ReportService;
+import umg.edu.gt.floristeria.service.ReporteGrafoCliente;
+import umg.edu.gt.floristeria.service.WordReportExporter;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.SQLException;
 import java.time.Year;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Servidor HTTP nativo (com.sun.net.httpserver) que expone la API REST
@@ -74,9 +84,18 @@ public class GraphRestApi {
             server.createContext("/api/grafo/proveedor-impacto",       new ProveedorImpactoHandler());
             server.createContext("/api/grafo/trazabilidad-inversa",    new TrazabilidadInversaHandler());
 
-            // Tabla hash
+            // Tabla hash (GET = leer, POST = agregar con detección de colisión)
             server.createContext("/api/hash/catalogo",                 new HashCatalogoHandler());
             server.createContext("/api/hash/marcas",                   new HashMarcasHandler());
+
+            // Escrituras comerciales y soporte de formularios
+            server.createContext("/api/grafo/factura",                 new FacturaHandler());
+            server.createContext("/api/clientes",                      new ClientesHandler());
+
+            // Reportes Microsoft Word (.docx) descargables
+            server.createContext("/api/reporte/productos.docx",        new ReporteProductosHandler());
+            server.createContext("/api/reporte/producto-marca.docx",   new ReporteMarcaHandler());
+            server.createContext("/api/reporte/grafo-cliente.docx",    new ReporteGrafoHandler());
 
             // Frontend estático
             server.createContext("/",                                  new StaticFileHandler());
@@ -101,7 +120,7 @@ public class GraphRestApi {
     /** Aplica CORS y gestiona pre-flight OPTIONS. Retorna true si el handler debe parar. */
     private static boolean aplicarCors(HttpExchange ex) throws IOException {
         ex.getResponseHeaders().add("Access-Control-Allow-Origin",  "*");
-        ex.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, OPTIONS");
+        ex.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
         ex.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
         if ("OPTIONS".equalsIgnoreCase(ex.getRequestMethod())) {
             ex.sendResponseHeaders(204, -1);
@@ -154,6 +173,36 @@ public class GraphRestApi {
 
     private static void enviarJson(HttpExchange ex, String json) throws IOException {
         enviarJson(ex, json, 200);
+    }
+
+    /** Responde un archivo binario como descarga (Content-Disposition: attachment). */
+    private static void enviarArchivo(HttpExchange ex, byte[] body, String filename) throws IOException {
+        ex.getResponseHeaders().set("Content-Type",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+        ex.getResponseHeaders().set("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+        ex.sendResponseHeaders(200, body.length);
+        try (OutputStream os = ex.getResponseBody()) { os.write(body); }
+    }
+
+    /** Lee y parsea un cuerpo application/x-www-form-urlencoded en un mapa. */
+    private static Map<String, String> leerForm(HttpExchange ex) throws IOException {
+        String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+        Map<String, String> m = new HashMap<>();
+        if (body.isBlank()) return m;
+        for (String par : body.split("&")) {
+            int i = par.indexOf('=');
+            if (i > 0) {
+                String k = URLDecoder.decode(par.substring(0, i), StandardCharsets.UTF_8);
+                String v = URLDecoder.decode(par.substring(i + 1), StandardCharsets.UTF_8);
+                m.put(k, v);
+            }
+        }
+        return m;
+    }
+
+    /** Escapa comillas dobles y backslash para incrustar texto en JSON. */
+    private static String esc(String s) {
+        return s == null ? "" : s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     /* ------------------------------------------------------------------ */
@@ -220,6 +269,7 @@ public class GraphRestApi {
     private static class HashCatalogoHandler implements HttpHandler {
         @Override public void handle(HttpExchange ex) throws IOException {
             if (aplicarCors(ex)) return;
+            if ("POST".equalsIgnoreCase(ex.getRequestMethod())) { agregarItem(ex); return; }
             if (catalogoRef == null) {
                 enviarJson(ex, "{\"error\":\"Tabla no inicializada\"}", 503);
                 return;
@@ -252,6 +302,7 @@ public class GraphRestApi {
     private static class HashMarcasHandler implements HttpHandler {
         @Override public void handle(HttpExchange ex) throws IOException {
             if (aplicarCors(ex)) return;
+            if ("POST".equalsIgnoreCase(ex.getRequestMethod())) { agregarMarca(ex); return; }
             if (marcasRef == null) {
                 enviarJson(ex, "{\"error\":\"Tabla no inicializada\"}", 503);
                 return;
@@ -278,6 +329,273 @@ public class GraphRestApi {
             }
             sb.append("\n  ]\n}");
             enviarJson(ex, sb.toString());
+        }
+    }
+
+    /* ------------------------------------------------------------------ */
+    /*  Altas en la tabla hash (POST) con detección de colisión            */
+    /* ------------------------------------------------------------------ */
+
+    /** POST /api/hash/catalogo — agrega un ItemFloral y reporta la colisión. */
+    private static void agregarItem(HttpExchange ex) throws IOException {
+        if (catalogoRef == null) { enviarJson(ex, "{\"ok\":false,\"error\":\"Tabla no inicializada\"}", 503); return; }
+        Map<String, String> f = leerForm(ex);
+        int    id;
+        double precio;
+        int    idProveedor;
+        String nombre = f.getOrDefault("nombre", "").trim();
+        try {
+            id          = Integer.parseInt(f.getOrDefault("id", "").trim());
+            precio      = Double.parseDouble(f.getOrDefault("precio", "0").trim());
+            idProveedor = Integer.parseInt(f.getOrDefault("idProveedor", "").trim());
+        } catch (NumberFormatException nfe) {
+            enviarJson(ex, "{\"ok\":false,\"error\":\"id, precio e idProveedor deben ser numéricos\"}", 400);
+            return;
+        }
+        if (nombre.isEmpty()) { enviarJson(ex, "{\"ok\":false,\"error\":\"el nombre es obligatorio\"}", 400); return; }
+
+        // 1) Persistir en Oracle primero (si está disponible) para no divergir memoria/BD
+        boolean persistido = false;
+        ComercioDao dao = new ComercioDao();
+        if (dao.disponible()) {
+            try {
+                dao.insertarItem(id, nombre, precio, idProveedor);
+                persistido = true;
+            } catch (SQLException e) {
+                enviarJson(ex, "{\"ok\":false,\"error\":\"Oracle: " + esc(e.getMessage()) + "\"}", 409);
+                return;
+            }
+        }
+
+        // 2) Insertar en la tabla hash en memoria, midiendo la colisión
+        String resultado;
+        synchronized (catalogoRef) {
+            int capAntes      = catalogoRef.getCapacity();
+            int colAntes      = catalogoRef.getCollisionCount();
+            boolean esUpdate  = catalogoRef.containsKey(id);
+
+            catalogoRef.put(id, new ItemFloral(id, nombre, precio, idProveedor));
+
+            var r       = catalogoRef.get(id);
+            int slot    = r.tablePosition();
+            int probes  = r.probes();
+            int chain   = catalogoRef.chainLengthAt(slot);
+            boolean rehash   = catalogoRef.getCapacity() != capAntes;
+            boolean colision = !esUpdate && chain > 1;
+
+            StringBuilder claves = new StringBuilder("[");
+            var ks = catalogoRef.keysAt(slot);
+            for (int i = 0; i < ks.size(); i++) { if (i > 0) claves.append(","); claves.append(ks.get(i)); }
+            claves.append("]");
+
+            resultado = "{"
+                + "\"ok\":true,"
+                + "\"id\":" + id + ","
+                + "\"slot\":" + slot + ","
+                + "\"esActualizacion\":" + esUpdate + ","
+                + "\"colision\":" + colision + ","
+                + "\"chainLength\":" + chain + ","
+                + "\"clavesEnSlot\":" + claves + ","
+                + "\"probes\":" + probes + ","
+                + "\"size\":" + catalogoRef.getSize() + ","
+                + "\"capacity\":" + catalogoRef.getCapacity() + ","
+                + "\"collisionCount\":" + catalogoRef.getCollisionCount() + ","
+                + "\"collisionDelta\":" + (catalogoRef.getCollisionCount() - colAntes) + ","
+                + "\"rehash\":" + rehash + ","
+                + "\"persistidoEnOracle\":" + persistido
+                + "}";
+        }
+        enviarJson(ex, resultado);
+    }
+
+    /** POST /api/hash/marcas — agrega un ProveedorOrigen y reporta la colisión. */
+    private static void agregarMarca(HttpExchange ex) throws IOException {
+        if (marcasRef == null) { enviarJson(ex, "{\"ok\":false,\"error\":\"Tabla no inicializada\"}", 503); return; }
+        Map<String, String> f = leerForm(ex);
+        int id;
+        String finca = f.getOrDefault("nombreFinca", "").trim();
+        String pais  = f.getOrDefault("pais", "").trim();
+        try {
+            id = Integer.parseInt(f.getOrDefault("id", "").trim());
+        } catch (NumberFormatException nfe) {
+            enviarJson(ex, "{\"ok\":false,\"error\":\"el id debe ser numérico\"}", 400);
+            return;
+        }
+        if (finca.isEmpty() || pais.isEmpty()) {
+            enviarJson(ex, "{\"ok\":false,\"error\":\"nombreFinca y pais son obligatorios\"}", 400);
+            return;
+        }
+
+        boolean persistido = false;
+        ComercioDao dao = new ComercioDao();
+        if (dao.disponible()) {
+            try { dao.insertarMarca(id, finca, pais); persistido = true; }
+            catch (SQLException e) {
+                enviarJson(ex, "{\"ok\":false,\"error\":\"Oracle: " + esc(e.getMessage()) + "\"}", 409);
+                return;
+            }
+        }
+
+        String resultado;
+        synchronized (marcasRef) {
+            int capAntes     = marcasRef.getCapacity();
+            int colAntes     = marcasRef.getCollisionCount();
+            boolean esUpdate = marcasRef.containsKey(id);
+
+            marcasRef.put(id, new ProveedorOrigen(id, finca, pais));
+
+            var r      = marcasRef.get(id);
+            int slot   = r.tablePosition();
+            int chain  = marcasRef.chainLengthAt(slot);
+            boolean rehash   = marcasRef.getCapacity() != capAntes;
+            boolean colision = !esUpdate && chain > 1;
+
+            StringBuilder claves = new StringBuilder("[");
+            var ks = marcasRef.keysAt(slot);
+            for (int i = 0; i < ks.size(); i++) { if (i > 0) claves.append(","); claves.append(ks.get(i)); }
+            claves.append("]");
+
+            resultado = "{"
+                + "\"ok\":true,"
+                + "\"id\":" + id + ","
+                + "\"slot\":" + slot + ","
+                + "\"esActualizacion\":" + esUpdate + ","
+                + "\"colision\":" + colision + ","
+                + "\"chainLength\":" + chain + ","
+                + "\"clavesEnSlot\":" + claves + ","
+                + "\"probes\":" + r.probes() + ","
+                + "\"size\":" + marcasRef.getSize() + ","
+                + "\"capacity\":" + marcasRef.getCapacity() + ","
+                + "\"collisionCount\":" + marcasRef.getCollisionCount() + ","
+                + "\"collisionDelta\":" + (marcasRef.getCollisionCount() - colAntes) + ","
+                + "\"rehash\":" + rehash + ","
+                + "\"persistidoEnOracle\":" + persistido
+                + "}";
+        }
+        enviarJson(ex, resultado);
+    }
+
+    /* ------------------------------------------------------------------ */
+    /*  Alta de factura (POST) y listado de clientes                       */
+    /* ------------------------------------------------------------------ */
+
+    /** POST /api/grafo/factura — crea una factura con sus detalles en Oracle. */
+    private static class FacturaHandler implements HttpHandler {
+        @Override public void handle(HttpExchange ex) throws IOException {
+            if (aplicarCors(ex)) return;
+            if (!"POST".equalsIgnoreCase(ex.getRequestMethod())) {
+                enviarJson(ex, "{\"ok\":false,\"error\":\"Use POST\"}", 405);
+                return;
+            }
+            ComercioDao dao = new ComercioDao();
+            if (!dao.disponible()) {
+                enviarJson(ex, "{\"ok\":false,\"error\":\"Oracle no configurado: los grafos requieren la base de datos\"}", 503);
+                return;
+            }
+            Map<String, String> f = leerForm(ex);
+            int cliente;
+            try {
+                cliente = Integer.parseInt(f.getOrDefault("cliente", "").trim());
+            } catch (NumberFormatException nfe) {
+                enviarJson(ex, "{\"ok\":false,\"error\":\"cliente inválido\"}", 400);
+                return;
+            }
+            // items = "50:3,51:2"
+            List<int[]> lineas = new ArrayList<>();
+            String itemsRaw = f.getOrDefault("items", "").trim();
+            if (!itemsRaw.isEmpty()) {
+                for (String par : itemsRaw.split(",")) {
+                    String[] kv = par.split(":");
+                    if (kv.length == 2) {
+                        try {
+                            int idItem = Integer.parseInt(kv[0].trim());
+                            int cant   = Integer.parseInt(kv[1].trim());
+                            if (cant > 0) lineas.add(new int[]{ idItem, cant });
+                        } catch (NumberFormatException ignored) { /* salta línea inválida */ }
+                    }
+                }
+            }
+            if (lineas.isEmpty()) {
+                enviarJson(ex, "{\"ok\":false,\"error\":\"Agregue al menos una línea (ítem y cantidad)\"}", 400);
+                return;
+            }
+            try {
+                int idFactura = dao.crearFactura(cliente, lineas);
+                enviarJson(ex, "{\"ok\":true,\"idFactura\":" + idFactura + "}");
+            } catch (SQLException e) {
+                enviarJson(ex, "{\"ok\":false,\"error\":\"Oracle: " + esc(e.getMessage()) + "\"}", 409);
+            }
+        }
+    }
+
+    /** GET /api/clientes — lista de clientes para poblar el formulario. */
+    private static class ClientesHandler implements HttpHandler {
+        @Override public void handle(HttpExchange ex) throws IOException {
+            if (aplicarCors(ex)) return;
+            ComercioDao dao = new ComercioDao();
+            if (!dao.disponible()) { enviarJson(ex, "[]"); return; }
+            try {
+                List<ComercioDao.ClienteRef> cs = dao.listarClientes();
+                StringBuilder sb = new StringBuilder("[");
+                for (int i = 0; i < cs.size(); i++) {
+                    var c = cs.get(i);
+                    if (i > 0) sb.append(",");
+                    sb.append("{\"id\":").append(c.id())
+                      .append(",\"nombre\":\"").append(esc(c.nombre())).append("\"}");
+                }
+                sb.append("]");
+                enviarJson(ex, sb.toString());
+            } catch (SQLException e) {
+                enviarJson(ex, "{\"error\":\"" + esc(e.getMessage()) + "\"}", 500);
+            }
+        }
+    }
+
+    /* ------------------------------------------------------------------ */
+    /*  Reportes Microsoft Word (.docx)                                    */
+    /* ------------------------------------------------------------------ */
+
+    /** GET /api/reporte/productos.docx — Reporte 4.1 desde la tabla hash actual. */
+    private static class ReporteProductosHandler implements HttpHandler {
+        @Override public void handle(HttpExchange ex) throws IOException {
+            if (aplicarCors(ex)) return;
+            if (catalogoRef == null) { enviarJson(ex, "{\"error\":\"Tabla no inicializada\"}", 503); return; }
+            var filas = new ReportService().reporteProductos(catalogoRef);
+            byte[] doc = new WordReportExporter().productos(filas);
+            enviarArchivo(ex, doc, "4.1_productos.docx");
+        }
+    }
+
+    /** GET /api/reporte/producto-marca.docx — Reporte 4.2. */
+    private static class ReporteMarcaHandler implements HttpHandler {
+        @Override public void handle(HttpExchange ex) throws IOException {
+            if (aplicarCors(ex)) return;
+            if (catalogoRef == null || marcasRef == null) {
+                enviarJson(ex, "{\"error\":\"Tablas no inicializadas\"}", 503); return;
+            }
+            var filas = new ReportService().reporteProductoMarca(catalogoRef, marcasRef);
+            byte[] doc = new WordReportExporter().productoMarca(filas);
+            enviarArchivo(ex, doc, "4.2_producto_marca.docx");
+        }
+    }
+
+    /** GET /api/reporte/grafo-cliente.docx?cliente=ID — Reporte 4.3 (requiere Oracle). */
+    private static class ReporteGrafoHandler implements HttpHandler {
+        @Override public void handle(HttpExchange ex) throws IOException {
+            if (aplicarCors(ex)) return;
+            ComercioDao dao = new ComercioDao();
+            if (!dao.disponible()) {
+                enviarJson(ex, "{\"error\":\"Oracle requerido para el reporte 4.3\"}", 503);
+                return;
+            }
+            int idCliente = param(ex.getRequestURI().getQuery(), "cliente", 101);
+            try {
+                ReporteGrafoCliente data = dao.recorridoCliente(idCliente);
+                byte[] doc = new WordReportExporter().grafoCliente(data);
+                enviarArchivo(ex, doc, "4.3_grafo_cliente_" + idCliente + ".docx");
+            } catch (java.sql.SQLException e) {
+                enviarJson(ex, "{\"error\":\"Oracle: " + esc(e.getMessage()) + "\"}", 409);
+            }
         }
     }
 

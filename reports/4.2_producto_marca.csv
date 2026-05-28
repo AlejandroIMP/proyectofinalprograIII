@@ -1,28 +1,28 @@
 ﻿idProducto,nombreProducto,idMarca,nombreMarca,paisMarca,slotMarca,probesMarca,marcaDurationNs
-1000,Rosas variedad #0,5,Finca Países Bajos S.A.,Holanda,5,1,600
-1001,Tulipanes variedad #1,6,Floricola Quiteña,Ecuador,6,1,1500
+1000,Rosas variedad #0,5,Finca Países Bajos S.A.,Holanda,5,1,400
+1001,Tulipanes variedad #1,6,Floricola Quiteña,Ecuador,6,1,1000
 1002,Lirios variedad #2,7,Cooperativa Antigua,Guatemala,7,1,200
 1003,Girasoles variedad #3,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1004,Orquideas variedad #4,6,Floricola Quiteña,Ecuador,6,1,100
 1005,Claveles variedad #5,7,Cooperativa Antigua,Guatemala,7,1,100
 1006,Margaritas variedad #6,5,Finca Países Bajos S.A.,Holanda,5,1,100
-1007,Crisantemos variedad #7,6,Floricola Quiteña,Ecuador,6,1,300
-1008,Astromelias variedad #8,7,Cooperativa Antigua,Guatemala,7,1,200
-1009,Gerberas variedad #9,5,Finca Países Bajos S.A.,Holanda,5,1,200
-1010,Rosas variedad #10,6,Floricola Quiteña,Ecuador,6,1,200
-1011,Tulipanes variedad #11,7,Cooperativa Antigua,Guatemala,7,1,100
+1007,Crisantemos variedad #7,6,Floricola Quiteña,Ecuador,6,1,100
+1008,Astromelias variedad #8,7,Cooperativa Antigua,Guatemala,7,1,100
+1009,Gerberas variedad #9,5,Finca Países Bajos S.A.,Holanda,5,1,100
+1010,Rosas variedad #10,6,Floricola Quiteña,Ecuador,6,1,400
+1011,Tulipanes variedad #11,7,Cooperativa Antigua,Guatemala,7,1,200
 1012,Lirios variedad #12,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1013,Girasoles variedad #13,6,Floricola Quiteña,Ecuador,6,1,100
 1014,Orquideas variedad #14,7,Cooperativa Antigua,Guatemala,7,1,100
-1015,Claveles variedad #15,5,Finca Países Bajos S.A.,Holanda,5,1,200
-1016,Margaritas variedad #16,6,Floricola Quiteña,Ecuador,6,1,200
+1015,Claveles variedad #15,5,Finca Países Bajos S.A.,Holanda,5,1,100
+1016,Margaritas variedad #16,6,Floricola Quiteña,Ecuador,6,1,100
 1017,Crisantemos variedad #17,7,Cooperativa Antigua,Guatemala,7,1,100
 1018,Astromelias variedad #18,5,Finca Países Bajos S.A.,Holanda,5,1,100
-1019,Gerberas variedad #19,6,Floricola Quiteña,Ecuador,6,1,400
+1019,Gerberas variedad #19,6,Floricola Quiteña,Ecuador,6,1,100
 1020,Rosas variedad #20,7,Cooperativa Antigua,Guatemala,7,1,200
-1021,Tulipanes variedad #21,5,Finca Países Bajos S.A.,Holanda,5,1,200
+1021,Tulipanes variedad #21,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1022,Lirios variedad #22,6,Floricola Quiteña,Ecuador,6,1,100
-1023,Girasoles variedad #23,7,Cooperativa Antigua,Guatemala,7,1,100
+1023,Girasoles variedad #23,7,Cooperativa Antigua,Guatemala,7,1,200
 1024,Orquideas variedad #24,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1025,Claveles variedad #25,6,Floricola Quiteña,Ecuador,6,1,100
 1026,Margaritas variedad #26,7,Cooperativa Antigua,Guatemala,7,1,100
@@ -30,156 +30,156 @@
 1028,Astromelias variedad #28,6,Floricola Quiteña,Ecuador,6,1,100
 1029,Gerberas variedad #29,7,Cooperativa Antigua,Guatemala,7,1,100
 1030,Rosas variedad #30,5,Finca Países Bajos S.A.,Holanda,5,1,100
-1031,Tulipanes variedad #31,6,Floricola Quiteña,Ecuador,6,1,100
+1031,Tulipanes variedad #31,6,Floricola Quiteña,Ecuador,6,1,200
 1032,Lirios variedad #32,7,Cooperativa Antigua,Guatemala,7,1,100
-1033,Girasoles variedad #33,5,Finca Países Bajos S.A.,Holanda,5,1,200
+1033,Girasoles variedad #33,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1034,Orquideas variedad #34,6,Floricola Quiteña,Ecuador,6,1,200
-1035,Claveles variedad #35,7,Cooperativa Antigua,Guatemala,7,1,200
-1036,Margaritas variedad #36,5,Finca Países Bajos S.A.,Holanda,5,1,200
-1037,Crisantemos variedad #37,6,Floricola Quiteña,Ecuador,6,1,200
+1035,Claveles variedad #35,7,Cooperativa Antigua,Guatemala,7,1,100
+1036,Margaritas variedad #36,5,Finca Países Bajos S.A.,Holanda,5,1,100
+1037,Crisantemos variedad #37,6,Floricola Quiteña,Ecuador,6,1,100
 1038,Astromelias variedad #38,7,Cooperativa Antigua,Guatemala,7,1,100
 1039,Gerberas variedad #39,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1040,Rosas variedad #40,6,Floricola Quiteña,Ecuador,6,1,100
 1041,Tulipanes variedad #41,7,Cooperativa Antigua,Guatemala,7,1,100
-1042,Lirios variedad #42,5,Finca Países Bajos S.A.,Holanda,5,1,200
+1042,Lirios variedad #42,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1043,Girasoles variedad #43,6,Floricola Quiteña,Ecuador,6,1,100
-1044,Orquideas variedad #44,7,Cooperativa Antigua,Guatemala,7,1,200
-1045,Claveles variedad #45,5,Finca Países Bajos S.A.,Holanda,5,1,200
+1044,Orquideas variedad #44,7,Cooperativa Antigua,Guatemala,7,1,100
+1045,Claveles variedad #45,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1046,Margaritas variedad #46,6,Floricola Quiteña,Ecuador,6,1,100
-1047,Crisantemos variedad #47,7,Cooperativa Antigua,Guatemala,7,1,300
-1048,Astromelias variedad #48,5,Finca Países Bajos S.A.,Holanda,5,1,1100
-1049,Gerberas variedad #49,6,Floricola Quiteña,Ecuador,6,1,200
-1050,Rosa Imperial PROMOCION,7,Cooperativa Antigua,Guatemala,7,1,200
-1051,Tulipanes variedad #51,5,Finca Países Bajos S.A.,Holanda,5,1,200
-1052,Lirios variedad #52,6,Floricola Quiteña,Ecuador,6,1,200
-1053,Girasoles variedad #53,7,Cooperativa Antigua,Guatemala,7,1,200
+1047,Crisantemos variedad #47,7,Cooperativa Antigua,Guatemala,7,1,100
+1048,Astromelias variedad #48,5,Finca Países Bajos S.A.,Holanda,5,1,200
+1049,Gerberas variedad #49,6,Floricola Quiteña,Ecuador,6,1,100
+1050,Rosas variedad #50,7,Cooperativa Antigua,Guatemala,7,1,100
+1051,Tulipanes variedad #51,5,Finca Países Bajos S.A.,Holanda,5,1,100
+1052,Lirios variedad #52,6,Floricola Quiteña,Ecuador,6,1,100
+1053,Girasoles variedad #53,7,Cooperativa Antigua,Guatemala,7,1,100
 1054,Orquideas variedad #54,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1055,Claveles variedad #55,6,Floricola Quiteña,Ecuador,6,1,100
-1056,Margaritas variedad #56,7,Cooperativa Antigua,Guatemala,7,1,200
+1056,Margaritas variedad #56,7,Cooperativa Antigua,Guatemala,7,1,100
 1057,Crisantemos variedad #57,5,Finca Países Bajos S.A.,Holanda,5,1,100
-1058,Astromelias variedad #58,6,Floricola Quiteña,Ecuador,6,1,200
+1058,Astromelias variedad #58,6,Floricola Quiteña,Ecuador,6,1,100
 1059,Gerberas variedad #59,7,Cooperativa Antigua,Guatemala,7,1,100
 1060,Rosas variedad #60,5,Finca Países Bajos S.A.,Holanda,5,1,100
-1061,Tulipanes variedad #61,6,Floricola Quiteña,Ecuador,6,1,200
-1062,Lirios variedad #62,7,Cooperativa Antigua,Guatemala,7,1,300
-1063,Girasoles variedad #63,5,Finca Países Bajos S.A.,Holanda,5,1,200
+1061,Tulipanes variedad #61,6,Floricola Quiteña,Ecuador,6,1,100
+1062,Lirios variedad #62,7,Cooperativa Antigua,Guatemala,7,1,100
+1063,Girasoles variedad #63,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1064,Orquideas variedad #64,6,Floricola Quiteña,Ecuador,6,1,100
-1065,Claveles variedad #65,7,Cooperativa Antigua,Guatemala,7,1,200
-1066,Margaritas variedad #66,5,Finca Países Bajos S.A.,Holanda,5,1,200
-1067,Crisantemos variedad #67,6,Floricola Quiteña,Ecuador,6,1,600
-1068,Astromelias variedad #68,7,Cooperativa Antigua,Guatemala,7,1,200
-1069,Gerberas variedad #69,5,Finca Países Bajos S.A.,Holanda,5,1,200
-1070,Rosas variedad #70,6,Floricola Quiteña,Ecuador,6,1,400
+1065,Claveles variedad #65,7,Cooperativa Antigua,Guatemala,7,1,100
+1066,Margaritas variedad #66,5,Finca Países Bajos S.A.,Holanda,5,1,100
+1067,Crisantemos variedad #67,6,Floricola Quiteña,Ecuador,6,1,100
+1068,Astromelias variedad #68,7,Cooperativa Antigua,Guatemala,7,1,100
+1069,Gerberas variedad #69,5,Finca Países Bajos S.A.,Holanda,5,1,300
+1070,Rosas variedad #70,6,Floricola Quiteña,Ecuador,6,1,200
 1071,Tulipanes variedad #71,7,Cooperativa Antigua,Guatemala,7,1,100
 1072,Lirios variedad #72,5,Finca Países Bajos S.A.,Holanda,5,1,200
-1073,Girasoles variedad #73,6,Floricola Quiteña,Ecuador,6,1,200
-1074,Orquideas variedad #74,7,Cooperativa Antigua,Guatemala,7,1,200
+1073,Girasoles variedad #73,6,Floricola Quiteña,Ecuador,6,1,100
+1074,Orquideas variedad #74,7,Cooperativa Antigua,Guatemala,7,1,100
 1075,Claveles variedad #75,5,Finca Países Bajos S.A.,Holanda,5,1,100
-1076,Margaritas variedad #76,6,Floricola Quiteña,Ecuador,6,1,200
+1076,Margaritas variedad #76,6,Floricola Quiteña,Ecuador,6,1,100
 1077,Crisantemos variedad #77,7,Cooperativa Antigua,Guatemala,7,1,100
-1078,Astromelias variedad #78,5,Finca Países Bajos S.A.,Holanda,5,1,200
-1079,Gerberas variedad #79,6,Floricola Quiteña,Ecuador,6,1,200
-1080,Rosas variedad #80,7,Cooperativa Antigua,Guatemala,7,1,200
-1081,Tulipanes variedad #81,5,Finca Países Bajos S.A.,Holanda,5,1,200
+1078,Astromelias variedad #78,5,Finca Países Bajos S.A.,Holanda,5,1,100
+1079,Gerberas variedad #79,6,Floricola Quiteña,Ecuador,6,1,100
+1080,Rosas variedad #80,7,Cooperativa Antigua,Guatemala,7,1,100
+1081,Tulipanes variedad #81,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1082,Lirios variedad #82,6,Floricola Quiteña,Ecuador,6,1,100
-1083,Girasoles variedad #83,7,Cooperativa Antigua,Guatemala,7,1,200
-1084,Orquideas variedad #84,5,Finca Países Bajos S.A.,Holanda,5,1,200
+1083,Girasoles variedad #83,7,Cooperativa Antigua,Guatemala,7,1,100
+1084,Orquideas variedad #84,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1085,Claveles variedad #85,6,Floricola Quiteña,Ecuador,6,1,100
-1086,Margaritas variedad #86,7,Cooperativa Antigua,Guatemala,7,1,200
-1087,Crisantemos variedad #87,5,Finca Países Bajos S.A.,Holanda,5,1,200
-1088,Astromelias variedad #88,6,Floricola Quiteña,Ecuador,6,1,200
-1089,Gerberas variedad #89,7,Cooperativa Antigua,Guatemala,7,1,200
-1090,Rosas variedad #90,5,Finca Países Bajos S.A.,Holanda,5,1,200
-1091,Tulipanes variedad #91,6,Floricola Quiteña,Ecuador,6,1,200
-1092,Lirios variedad #92,7,Cooperativa Antigua,Guatemala,7,1,200
+1086,Margaritas variedad #86,7,Cooperativa Antigua,Guatemala,7,1,100
+1087,Crisantemos variedad #87,5,Finca Países Bajos S.A.,Holanda,5,1,100
+1088,Astromelias variedad #88,6,Floricola Quiteña,Ecuador,6,1,100
+1089,Gerberas variedad #89,7,Cooperativa Antigua,Guatemala,7,1,100
+1090,Rosas variedad #90,5,Finca Países Bajos S.A.,Holanda,5,1,100
+1091,Tulipanes variedad #91,6,Floricola Quiteña,Ecuador,6,1,100
+1092,Lirios variedad #92,7,Cooperativa Antigua,Guatemala,7,1,100
 1093,Girasoles variedad #93,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1094,Orquideas variedad #94,6,Floricola Quiteña,Ecuador,6,1,100
 1095,Claveles variedad #95,7,Cooperativa Antigua,Guatemala,7,1,100
 1096,Margaritas variedad #96,5,Finca Países Bajos S.A.,Holanda,5,1,100
-1097,Crisantemos variedad #97,6,Floricola Quiteña,Ecuador,6,1,200
+1097,Crisantemos variedad #97,6,Floricola Quiteña,Ecuador,6,1,100
 1098,Astromelias variedad #98,7,Cooperativa Antigua,Guatemala,7,1,100
-1099,Gerberas variedad #99,5,Finca Países Bajos S.A.,Holanda,5,1,200
-1100,Rosas variedad #100,6,Floricola Quiteña,Ecuador,6,1,200
+1099,Gerberas variedad #99,5,Finca Países Bajos S.A.,Holanda,5,1,100
+1100,Rosas variedad #100,6,Floricola Quiteña,Ecuador,6,1,100
 1101,Tulipanes variedad #101,7,Cooperativa Antigua,Guatemala,7,1,100
 1102,Lirios variedad #102,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1103,Girasoles variedad #103,6,Floricola Quiteña,Ecuador,6,1,100
-1104,Orquideas variedad #104,7,Cooperativa Antigua,Guatemala,7,1,200
-1105,Claveles variedad #105,5,Finca Países Bajos S.A.,Holanda,5,1,200
-1106,Margaritas variedad #106,6,Floricola Quiteña,Ecuador,6,1,200
-1107,Crisantemos variedad #107,7,Cooperativa Antigua,Guatemala,7,1,200
-1108,Astromelias variedad #108,5,Finca Países Bajos S.A.,Holanda,5,1,300
+1104,Orquideas variedad #104,7,Cooperativa Antigua,Guatemala,7,1,100
+1105,Claveles variedad #105,5,Finca Países Bajos S.A.,Holanda,5,1,100
+1106,Margaritas variedad #106,6,Floricola Quiteña,Ecuador,6,1,100
+1107,Crisantemos variedad #107,7,Cooperativa Antigua,Guatemala,7,1,100
+1108,Astromelias variedad #108,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1109,Gerberas variedad #109,6,Floricola Quiteña,Ecuador,6,1,200
 1110,Rosas variedad #110,7,Cooperativa Antigua,Guatemala,7,1,100
 1111,Tulipanes variedad #111,5,Finca Países Bajos S.A.,Holanda,5,1,100
-1112,Lirios variedad #112,6,Floricola Quiteña,Ecuador,6,1,200
+1112,Lirios variedad #112,6,Floricola Quiteña,Ecuador,6,1,100
 1113,Girasoles variedad #113,7,Cooperativa Antigua,Guatemala,7,1,100
 1114,Orquideas variedad #114,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1115,Claveles variedad #115,6,Floricola Quiteña,Ecuador,6,1,200
-1116,Margaritas variedad #116,7,Cooperativa Antigua,Guatemala,7,1,200
+1116,Margaritas variedad #116,7,Cooperativa Antigua,Guatemala,7,1,100
 1117,Crisantemos variedad #117,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1118,Astromelias variedad #118,6,Floricola Quiteña,Ecuador,6,1,100
 1119,Gerberas variedad #119,7,Cooperativa Antigua,Guatemala,7,1,100
 1120,Rosas variedad #120,5,Finca Países Bajos S.A.,Holanda,5,1,200
 1121,Tulipanes variedad #121,6,Floricola Quiteña,Ecuador,6,1,100
-1122,Lirios variedad #122,7,Cooperativa Antigua,Guatemala,7,1,200
+1122,Lirios variedad #122,7,Cooperativa Antigua,Guatemala,7,1,100
 1123,Girasoles variedad #123,5,Finca Países Bajos S.A.,Holanda,5,1,200
 1124,Orquideas variedad #124,6,Floricola Quiteña,Ecuador,6,1,100
 1125,Claveles variedad #125,7,Cooperativa Antigua,Guatemala,7,1,100
-1126,Margaritas variedad #126,5,Finca Países Bajos S.A.,Holanda,5,1,200
-1127,Crisantemos variedad #127,6,Floricola Quiteña,Ecuador,6,1,200
-1128,Astromelias variedad #128,7,Cooperativa Antigua,Guatemala,7,1,200
+1126,Margaritas variedad #126,5,Finca Países Bajos S.A.,Holanda,5,1,100
+1127,Crisantemos variedad #127,6,Floricola Quiteña,Ecuador,6,1,100
+1128,Astromelias variedad #128,7,Cooperativa Antigua,Guatemala,7,1,100
 1129,Gerberas variedad #129,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1130,Rosas variedad #130,6,Floricola Quiteña,Ecuador,6,1,100
 1131,Tulipanes variedad #131,7,Cooperativa Antigua,Guatemala,7,1,100
-1132,Lirios variedad #132,5,Finca Países Bajos S.A.,Holanda,5,1,200
+1132,Lirios variedad #132,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1133,Girasoles variedad #133,6,Floricola Quiteña,Ecuador,6,1,200
-1134,Orquideas variedad #134,7,Cooperativa Antigua,Guatemala,7,1,200
-1135,Claveles variedad #135,5,Finca Países Bajos S.A.,Holanda,5,1,200
-1136,Margaritas variedad #136,6,Floricola Quiteña,Ecuador,6,1,200
-1137,Crisantemos variedad #137,7,Cooperativa Antigua,Guatemala,7,1,200
+1134,Orquideas variedad #134,7,Cooperativa Antigua,Guatemala,7,1,100
+1135,Claveles variedad #135,5,Finca Países Bajos S.A.,Holanda,5,1,100
+1136,Margaritas variedad #136,6,Floricola Quiteña,Ecuador,6,1,100
+1137,Crisantemos variedad #137,7,Cooperativa Antigua,Guatemala,7,1,100
 1138,Astromelias variedad #138,5,Finca Países Bajos S.A.,Holanda,5,1,100
-1139,Gerberas variedad #139,6,Floricola Quiteña,Ecuador,6,1,200
-1140,Rosas variedad #140,7,Cooperativa Antigua,Guatemala,7,1,100
+1139,Gerberas variedad #139,6,Floricola Quiteña,Ecuador,6,1,100
+1140,Rosas variedad #140,7,Cooperativa Antigua,Guatemala,7,1,200
 1141,Tulipanes variedad #141,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1142,Lirios variedad #142,6,Floricola Quiteña,Ecuador,6,1,100
 1143,Girasoles variedad #143,7,Cooperativa Antigua,Guatemala,7,1,100
 1144,Orquideas variedad #144,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1145,Claveles variedad #145,6,Floricola Quiteña,Ecuador,6,1,100
-1146,Margaritas variedad #146,7,Cooperativa Antigua,Guatemala,7,1,200
+1146,Margaritas variedad #146,7,Cooperativa Antigua,Guatemala,7,1,100
 1147,Crisantemos variedad #147,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1148,Astromelias variedad #148,6,Floricola Quiteña,Ecuador,6,1,100
 1149,Gerberas variedad #149,7,Cooperativa Antigua,Guatemala,7,1,100
 1150,Rosas variedad #150,5,Finca Países Bajos S.A.,Holanda,5,1,100
-1151,Tulipanes variedad #151,6,Floricola Quiteña,Ecuador,6,1,200
+1151,Tulipanes variedad #151,6,Floricola Quiteña,Ecuador,6,1,100
 1152,Lirios variedad #152,7,Cooperativa Antigua,Guatemala,7,1,100
 1153,Girasoles variedad #153,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1154,Orquideas variedad #154,6,Floricola Quiteña,Ecuador,6,1,100
 1155,Claveles variedad #155,7,Cooperativa Antigua,Guatemala,7,1,100
-1156,Margaritas variedad #156,5,Finca Países Bajos S.A.,Holanda,5,1,200
+1156,Margaritas variedad #156,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1157,Crisantemos variedad #157,6,Floricola Quiteña,Ecuador,6,1,100
 1158,Astromelias variedad #158,7,Cooperativa Antigua,Guatemala,7,1,100
 1159,Gerberas variedad #159,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1160,Rosas variedad #160,6,Floricola Quiteña,Ecuador,6,1,100
-1161,Tulipanes variedad #161,7,Cooperativa Antigua,Guatemala,7,1,200
+1161,Tulipanes variedad #161,7,Cooperativa Antigua,Guatemala,7,1,100
 1162,Lirios variedad #162,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1163,Girasoles variedad #163,6,Floricola Quiteña,Ecuador,6,1,100
 1164,Orquideas variedad #164,7,Cooperativa Antigua,Guatemala,7,1,100
 1165,Claveles variedad #165,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1166,Margaritas variedad #166,6,Floricola Quiteña,Ecuador,6,1,100
-1167,Crisantemos variedad #167,7,Cooperativa Antigua,Guatemala,7,1,200
+1167,Crisantemos variedad #167,7,Cooperativa Antigua,Guatemala,7,1,100
 1168,Astromelias variedad #168,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1169,Gerberas variedad #169,6,Floricola Quiteña,Ecuador,6,1,100
-1170,Rosas variedad #170,7,Cooperativa Antigua,Guatemala,7,1,100
+1170,Rosas variedad #170,7,Cooperativa Antigua,Guatemala,7,1,200
 1171,Tulipanes variedad #171,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1172,Lirios variedad #172,6,Floricola Quiteña,Ecuador,6,1,100
 1173,Girasoles variedad #173,7,Cooperativa Antigua,Guatemala,7,1,100
 1174,Orquideas variedad #174,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1175,Claveles variedad #175,6,Floricola Quiteña,Ecuador,6,1,100
-1176,Margaritas variedad #176,7,Cooperativa Antigua,Guatemala,7,1,400
-1177,Crisantemos variedad #177,5,Finca Países Bajos S.A.,Holanda,5,1,200
+1176,Margaritas variedad #176,7,Cooperativa Antigua,Guatemala,7,1,100
+1177,Crisantemos variedad #177,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1178,Astromelias variedad #178,6,Floricola Quiteña,Ecuador,6,1,100
-1179,Gerberas variedad #179,7,Cooperativa Antigua,Guatemala,7,1,200
-1180,Rosas variedad #180,5,Finca Países Bajos S.A.,Holanda,5,1,200
+1179,Gerberas variedad #179,7,Cooperativa Antigua,Guatemala,7,1,100
+1180,Rosas variedad #180,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1181,Tulipanes variedad #181,6,Floricola Quiteña,Ecuador,6,1,200
 1182,Lirios variedad #182,7,Cooperativa Antigua,Guatemala,7,1,100
 1183,Girasoles variedad #183,5,Finca Países Bajos S.A.,Holanda,5,1,100
@@ -187,15 +187,15 @@
 1185,Claveles variedad #185,7,Cooperativa Antigua,Guatemala,7,1,100
 1186,Margaritas variedad #186,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1187,Crisantemos variedad #187,6,Floricola Quiteña,Ecuador,6,1,100
-1188,Astromelias variedad #188,7,Cooperativa Antigua,Guatemala,7,1,200
+1188,Astromelias variedad #188,7,Cooperativa Antigua,Guatemala,7,1,100
 1189,Gerberas variedad #189,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1190,Rosas variedad #190,6,Floricola Quiteña,Ecuador,6,1,100
-1191,Tulipanes variedad #191,7,Cooperativa Antigua,Guatemala,7,1,200
-1192,Lirios variedad #192,5,Finca Países Bajos S.A.,Holanda,5,1,200
+1191,Tulipanes variedad #191,7,Cooperativa Antigua,Guatemala,7,1,100
+1192,Lirios variedad #192,5,Finca Países Bajos S.A.,Holanda,5,1,100
 1193,Girasoles variedad #193,6,Floricola Quiteña,Ecuador,6,1,100
-1194,Orquideas variedad #194,7,Cooperativa Antigua,Guatemala,7,1,200
+1194,Orquideas variedad #194,7,Cooperativa Antigua,Guatemala,7,1,100
 1195,Claveles variedad #195,5,Finca Países Bajos S.A.,Holanda,5,1,100
-1196,Margaritas variedad #196,6,Floricola Quiteña,Ecuador,6,1,100
+1196,Margaritas variedad #196,6,Floricola Quiteña,Ecuador,6,1,200
 1197,Crisantemos variedad #197,7,Cooperativa Antigua,Guatemala,7,1,100
-1198,Astromelias variedad #198,5,Finca Países Bajos S.A.,Holanda,5,1,100
-1199,Gerberas variedad #199,6,Floricola Quiteña,Ecuador,6,1,200
+1198,Astromelias variedad #198,5,Finca Países Bajos S.A.,Holanda,5,1,200
+1199,Gerberas variedad #199,6,Floricola Quiteña,Ecuador,6,1,100
