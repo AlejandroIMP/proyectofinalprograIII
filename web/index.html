@@ -3,13 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Floristeria UMG — Visualizador de Grafos</title>
-
-  <!-- Vis.js Network desde CDN (no requiere instalacion local) -->
+  <title>Floristeria UMG — Comercial</title>
   <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-
   <style>
-    /* ── Reset y fuente ──────────────────────────────────────── */
+    /* ── Reset ─────────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Segoe UI', system-ui, sans-serif;
@@ -21,368 +18,497 @@
       overflow: hidden;
     }
 
-    /* ── Encabezado ─────────────────────────────────────────── */
+    /* ── Encabezado ─────────────────────────────────────────────── */
     header {
       background: linear-gradient(135deg, #2d6a4f 0%, #1b4332 100%);
       color: #fff;
-      padding: 10px 20px;
+      padding: 8px 20px;
       display: flex;
       align-items: center;
       gap: 12px;
       box-shadow: 0 2px 8px rgba(0,0,0,.25);
       flex-shrink: 0;
     }
-    header h1 { font-size: 1.15rem; font-weight: 600; letter-spacing: .3px; }
-    header .subtitle { font-size: .8rem; opacity: .8; }
+    header h1 { font-size: 1.05rem; font-weight: 600; }
+    header .sub { font-size: .75rem; opacity: .8; }
 
-    /* ── Barra de controles ─────────────────────────────────── */
+    /* ── Pestañas ───────────────────────────────────────────────── */
+    .tabs {
+      background: #fff;
+      border-bottom: 2px solid #e2e8f0;
+      display: flex;
+      flex-shrink: 0;
+    }
+    .tab-btn {
+      padding: 10px 24px;
+      font-size: .9rem;
+      font-weight: 600;
+      border: none;
+      background: none;
+      cursor: pointer;
+      color: #718096;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: color .2s, border-color .2s;
+    }
+    .tab-btn:hover    { color: #2d6a4f; }
+    .tab-btn.activa   { color: #2d6a4f; border-bottom-color: #2d6a4f; }
+
+    /* ── Paneles de pestaña ─────────────────────────────────────── */
+    .panel { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+    .panel.visible { display: flex; }
+
+    /* ── Barra de controles compartida ─────────────────────────── */
     .toolbar {
       background: #fff;
       border-bottom: 1px solid #e2e8f0;
-      padding: 10px 20px;
+      padding: 9px 18px;
       display: flex;
       align-items: center;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 8px;
       flex-shrink: 0;
     }
-    .toolbar label { font-size: .85rem; font-weight: 500; color: #4a5568; }
+    .toolbar label { font-size: .82rem; font-weight: 500; color: #4a5568; }
     .toolbar select, .toolbar input[type="number"] {
       border: 1px solid #cbd5e0;
       border-radius: 6px;
-      padding: 6px 10px;
-      font-size: .9rem;
+      padding: 5px 9px;
+      font-size: .88rem;
       outline: none;
       transition: border-color .2s;
     }
-    .toolbar select:focus, .toolbar input[type="number"]:focus {
+    .toolbar select:focus, .toolbar input:focus {
       border-color: #2d6a4f;
       box-shadow: 0 0 0 3px rgba(45,106,79,.15);
     }
-    .toolbar input[type="number"] { width: 90px; }
-    .btn-cargar {
-      background: #2d6a4f;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      padding: 7px 18px;
-      font-size: .9rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background .2s, transform .1s;
+    .toolbar input[type="number"] { width: 84px; }
+    .btn {
+      background: #2d6a4f; color: #fff;
+      border: none; border-radius: 6px;
+      padding: 6px 16px; font-size: .88rem; font-weight: 600;
+      cursor: pointer; transition: background .2s, transform .1s;
     }
-    .btn-cargar:hover  { background: #1b4332; }
-    .btn-cargar:active { transform: scale(.97); }
+    .btn:hover  { background: #1b4332; }
+    .btn:active { transform: scale(.97); }
 
-    /* ── Panel de estadisticas ──────────────────────────────── */
-    .stats {
-      display: flex;
-      gap: 18px;
-      margin-left: auto;
-      font-size: .83rem;
-      color: #718096;
-    }
+    .stats { display: flex; gap: 16px; margin-left: auto; font-size: .8rem; color: #718096; }
     .stats span { display: flex; align-items: center; gap: 4px; }
     .stats strong { color: #2d3748; font-weight: 700; }
 
-    /* ── Mensaje de error ───────────────────────────────────── */
-    #error-msg {
+    /* ── Mensajes ───────────────────────────────────────────────── */
+    .error-bar {
       display: none;
-      background: #fff5f5;
-      color: #c53030;
+      background: #fff5f5; color: #c53030;
       border-left: 4px solid #fc8181;
-      padding: 8px 16px;
-      font-size: .85rem;
-      flex-shrink: 0;
+      padding: 7px 16px; font-size: .83rem; flex-shrink: 0;
     }
 
-    /* ── Contenedor del grafo ───────────────────────────────── */
-    #graph-container {
-      flex: 1;
-      position: relative;
-      overflow: hidden;
-    }
-    #graph {
-      width: 100%;
-      height: 100%;
-    }
-
-    /* Spinner de carga superpuesto */
+    /* ── Grafo ──────────────────────────────────────────────────── */
+    #graph-wrap { flex: 1; position: relative; overflow: hidden; }
+    #graph { width: 100%; height: 100%; }
     #spinner {
-      display: none;
-      position: absolute;
-      inset: 0;
-      background: rgba(255,255,255,.7);
-      align-items: center;
-      justify-content: center;
-      font-size: 1rem;
-      color: #2d6a4f;
-      font-weight: 600;
+      display: none; position: absolute; inset: 0;
+      background: rgba(255,255,255,.75);
+      align-items: center; justify-content: center;
+      font-size: 1rem; color: #2d6a4f; font-weight: 600;
     }
-    #spinner.activo { display: flex; }
-
-    /* Mensaje cuando el grafo esta vacio */
-    #vacio-msg {
-      display: none;
-      position: absolute;
-      inset: 0;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      gap: 12px;
-      color: #a0aec0;
-      font-size: 1rem;
-      pointer-events: none;
+    #spinner.on { display: flex; }
+    #vacio {
+      display: none; position: absolute; inset: 0;
+      flex-direction: column; align-items: center; justify-content: center;
+      gap: 10px; color: #a0aec0; font-size: .95rem; pointer-events: none;
     }
-    #vacio-msg.visible { display: flex; }
-    #vacio-msg .icono { font-size: 3rem; }
+    #vacio.on { display: flex; }
 
-    /* ── Leyenda ─────────────────────────────────────────────── */
+    /* ── Leyenda de grafos ──────────────────────────────────────── */
     .leyenda {
-      background: #fff;
-      border-top: 1px solid #e2e8f0;
-      padding: 6px 20px;
-      display: flex;
-      gap: 20px;
-      align-items: center;
-      font-size: .8rem;
-      color: #4a5568;
-      flex-shrink: 0;
+      background: #fff; border-top: 1px solid #e2e8f0;
+      padding: 5px 18px; display: flex; gap: 18px;
+      align-items: center; font-size: .78rem; color: #4a5568; flex-shrink: 0;
     }
-    .leyenda-item { display: flex; align-items: center; gap: 6px; }
-    .dot {
-      width: 13px; height: 13px;
-      border-radius: 50%;
-      border: 2px solid;
-      flex-shrink: 0;
+    .leyenda-item { display: flex; align-items: center; gap: 5px; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid; flex-shrink: 0; }
+
+    /* ── Hash Table panel ───────────────────────────────────────── */
+    #hash-content { flex: 1; overflow-y: auto; padding: 16px; }
+
+    .hash-stats-bar {
+      display: flex; flex-wrap: wrap; gap: 16px;
+      background: #fff; border: 1px solid #e2e8f0;
+      border-radius: 8px; padding: 12px 18px; margin-bottom: 16px;
     }
+    .hash-stat { display: flex; flex-direction: column; align-items: center; }
+    .hash-stat .val { font-size: 1.4rem; font-weight: 700; color: #2d6a4f; }
+    .hash-stat .lbl { font-size: .72rem; color: #718096; }
+
+    table.slot-table {
+      width: 100%; border-collapse: collapse;
+      background: #fff; border-radius: 8px; overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    }
+    table.slot-table thead th {
+      background: #2d6a4f; color: #fff;
+      padding: 9px 12px; font-size: .82rem; text-align: left;
+    }
+    table.slot-table tbody tr:nth-child(even) { background: #f7fafc; }
+    table.slot-table tbody td {
+      padding: 7px 12px; font-size: .82rem;
+      border-bottom: 1px solid #edf2f7; vertical-align: middle;
+    }
+    .bar-cell { min-width: 80px; }
+    .chain-bar {
+      height: 14px; border-radius: 3px; display: inline-block; min-width: 4px;
+    }
+    .slot-num  { font-weight: 700; color: #4a5568; }
+    .items-col { color: #2d3748; line-height: 1.6; }
+    .item-chip {
+      display: inline-block; background: #edf2f7;
+      border-radius: 4px; padding: 2px 7px; margin: 1px;
+      font-size: .78rem;
+    }
+    .vacíos-info { color: #a0aec0; font-size: .8rem; margin-top: 10px; text-align: center; }
+
+    /* ── Inputs de rango de años (ocultos por defecto) ─────────── */
+    .anio-group { display: none; align-items: center; gap: 6px; }
+    .anio-group.visible { display: flex; }
   </style>
 </head>
 <body>
 
-<!-- ══════════════════ ENCABEZADO ══════════════════ -->
+<!-- ══ ENCABEZADO ═══════════════════════════════════════════════════ -->
 <header>
-  <span style="font-size:1.6rem">🌸</span>
+  <span style="font-size:1.5rem">🌸</span>
   <div>
-    <h1>Floristeria UMG — Visualizador de Grafos Comerciales</h1>
-    <div class="subtitle">Programacion III | Seccion A | Proyecto 2</div>
+    <h1>Floristeria UMG — Gestión Comercial</h1>
+    <div class="sub">Programacion III · Sección A · Proyecto 2</div>
   </div>
 </header>
 
-<!-- ══════════════════ BARRA DE CONTROLES ══════════════════ -->
-<div class="toolbar">
-  <label for="sel-consulta">Consulta:</label>
-  <select id="sel-consulta" onchange="actualizarPlaceholder()">
-    <option value="trazabilidad">Trazabilidad de Factura</option>
-    <option value="cliente-productos">Productos de Cliente</option>
-    <option value="proveedor-impacto">Impacto de Proveedor</option>
-  </select>
-
-  <label for="inp-id">ID:</label>
-  <input type="number" id="inp-id" value="1" min="1" placeholder="Ej: 1"
-         onkeydown="if(event.key==='Enter') cargarGrafo()" />
-
-  <button class="btn-cargar" onclick="cargarGrafo()">&#9654; Cargar</button>
-
-  <div class="stats">
-    <span>Nodos: <strong id="stat-nodos">0</strong></span>
-    <span>Aristas: <strong id="stat-aristas">0</strong></span>
-    <span>Tiempo: <strong id="stat-tiempo">—</strong></span>
-  </div>
+<!-- ══ PESTAÑAS ══════════════════════════════════════════════════════ -->
+<div class="tabs">
+  <button class="tab-btn activa" onclick="cambiarTab('grafos', this)">
+    📊 Grafos Comerciales
+  </button>
+  <button class="tab-btn" onclick="cambiarTab('hash', this)">
+    🗂 Tabla Hash
+  </button>
 </div>
 
-<!-- ══════════════════ MENSAJE DE ERROR ══════════════════ -->
-<div id="error-msg"></div>
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!--  PANEL 1: GRAFOS                                                -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div id="panel-grafos" class="panel visible">
 
-<!-- ══════════════════ CANVAS DEL GRAFO ══════════════════ -->
-<div id="graph-container">
-  <div id="graph"></div>
+  <!-- Controles -->
+  <div class="toolbar">
+    <label for="sel-consulta">Consulta:</label>
+    <select id="sel-consulta" onchange="onConsultaChange()">
+      <option value="trazabilidad">Trazabilidad de Factura</option>
+      <option value="cliente-productos">Productos de Cliente</option>
+      <option value="proveedor-impacto">Impacto de Proveedor</option>
+      <option value="cliente-productos-anio">Productos Cliente por Año</option>
+      <option value="trazabilidad-inversa">Trazabilidad Inversa (por Ítem)</option>
+    </select>
 
-  <div id="spinner">Cargando grafo...</div>
+    <label for="inp-id">ID:</label>
+    <input type="number" id="inp-id" value="1" min="1" placeholder="Ej: 1"
+           onkeydown="if(event.key==='Enter') cargarGrafo()" />
 
-  <div id="vacio-msg">
-    <div class="icono">🌿</div>
-    <div>Sin datos para mostrar.</div>
-    <div style="font-size:.85rem">Verifica que Oracle este accesible y que el ID exista.</div>
-  </div>
-</div>
+    <!-- Inputs extra para rango de años -->
+    <div class="anio-group" id="anio-group">
+      <label>Año inicio:</label>
+      <input type="number" id="inp-anio-ini" value="2024" min="2000" max="2099" style="width:80px"/>
+      <label>Año fin:</label>
+      <input type="number" id="inp-anio-fin" value="2025" min="2000" max="2099" style="width:80px"/>
+    </div>
 
-<!-- ══════════════════ LEYENDA ══════════════════ -->
-<div class="leyenda">
-  <strong>Leyenda:</strong>
-  <div class="leyenda-item">
-    <div class="dot" style="background:#97C2FC; border-color:#2B7CE9;"></div> Cliente
-  </div>
-  <div class="leyenda-item">
-    <div class="dot" style="background:#FB7E81; border-color:#FA0A10; border-radius:2px;"></div> Factura
-  </div>
-  <div class="leyenda-item">
-    <div class="dot" style="background:#7BE141; border-color:#41A906; transform:rotate(45deg);"></div> Item Floral
-  </div>
-  <div class="leyenda-item">
-    <div class="dot" style="background:#FFCD37; border-color:#FFA500;"></div> Proveedor / Finca
-  </div>
-</div>
+    <button class="btn" onclick="cargarGrafo()">▶ Cargar</button>
 
-<!-- ══════════════════ JAVASCRIPT ══════════════════ -->
+    <div class="stats">
+      <span>Nodos: <strong id="g-nodos">0</strong></span>
+      <span>Aristas: <strong id="g-aristas">0</strong></span>
+      <span>Tiempo: <strong id="g-tiempo">—</strong></span>
+    </div>
+  </div>
+
+  <div class="error-bar" id="g-error"></div>
+
+  <!-- Canvas -->
+  <div id="graph-wrap">
+    <div id="graph"></div>
+    <div id="spinner">Cargando grafo…</div>
+    <div id="vacio">
+      <span style="font-size:2.5rem">🌿</span>
+      <span>Sin datos. Verifica que Oracle esté activo y que el ID exista.</span>
+    </div>
+  </div>
+
+  <!-- Leyenda -->
+  <div class="leyenda">
+    <strong>Leyenda:</strong>
+    <div class="leyenda-item">
+      <div class="dot" style="background:#97C2FC;border-color:#2B7CE9"></div>Cliente
+    </div>
+    <div class="leyenda-item">
+      <div class="dot" style="background:#FB7E81;border-color:#FA0A10;border-radius:2px"></div>Factura
+    </div>
+    <div class="leyenda-item">
+      <div class="dot" style="background:#7BE141;border-color:#41A906;transform:rotate(45deg)"></div>Ítem Floral
+    </div>
+    <div class="leyenda-item">
+      <div class="dot" style="background:#FFCD37;border-color:#FFA500"></div>Proveedor / Finca
+    </div>
+  </div>
+</div><!-- /panel-grafos -->
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!--  PANEL 2: TABLA HASH                                            -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div id="panel-hash" class="panel">
+
+  <!-- Controles -->
+  <div class="toolbar">
+    <label for="sel-hash">Tabla:</label>
+    <select id="sel-hash">
+      <option value="catalogo">Catálogo de Ítems Florales</option>
+      <option value="marcas">Proveedores / Marcas</option>
+    </select>
+    <button class="btn" onclick="cargarHash()">▶ Cargar</button>
+
+    <div class="stats">
+      <span>Capacidad: <strong id="h-cap">—</strong></span>
+      <span>Tamaño: <strong id="h-size">—</strong></span>
+      <span>Factor carga: <strong id="h-lf">—</strong></span>
+      <span>Colisiones: <strong id="h-col">—</strong></span>
+    </div>
+  </div>
+
+  <div class="error-bar" id="h-error"></div>
+
+  <div id="hash-content">
+    <p style="color:#a0aec0;text-align:center;margin-top:40px">
+      Haz clic en <strong>Cargar</strong> para visualizar la tabla hash.
+    </p>
+  </div>
+</div><!-- /panel-hash -->
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!--  JAVASCRIPT                                                      -->
+<!-- ════════════════════════════════════════════════════════════════ -->
 <script>
-  // ── Configuracion de la API ──────────────────────────────────────────────
-  const API_BASE = 'http://localhost:8085';
+  const API = 'http://localhost:8085';
 
+  /* ── Configuración de consultas ─────────────────────────────── */
   const CONSULTAS = {
-    'trazabilidad':      { param: 'factura',   placeholder: 'Ej: 1',  default: 1 },
-    'cliente-productos': { param: 'cliente',   placeholder: 'Ej: 1',  default: 1 },
-    'proveedor-impacto': { param: 'proveedor', placeholder: 'Ej: 5',  default: 5 }
+    'trazabilidad':            { param: 'factura',   ph: 'Ej: 1',  def: 1,  anio: false },
+    'cliente-productos':       { param: 'cliente',   ph: 'Ej: 1',  def: 1,  anio: false },
+    'proveedor-impacto':       { param: 'proveedor', ph: 'Ej: 5',  def: 5,  anio: false },
+    'cliente-productos-anio':  { param: 'cliente',   ph: 'Ej: 1',  def: 1,  anio: true  },
+    'trazabilidad-inversa':    { param: 'item',      ph: 'Ej: 50', def: 50, anio: false }
   };
 
-  // ── Opciones de visualizacion de Vis.js ─────────────────────────────────
-  const VIS_OPTIONS = {
+  /* ── Opciones Vis.js ─────────────────────────────────────────── */
+  const VIS_OPTS = {
     groups: {
-      CLIENTE:   {
-        color: { background: '#97C2FC', border: '#2B7CE9', highlight: { background: '#d0e8ff', border: '#1a56c4' } },
-        shape: 'ellipse',
-        font:  { size: 13, face: 'Segoe UI, sans-serif' }
-      },
-      FACTURA:   {
-        color: { background: '#FB7E81', border: '#FA0A10', highlight: { background: '#ffd0d1', border: '#c70009' } },
-        shape: 'box',
-        font:  { size: 13, face: 'Segoe UI, sans-serif' }
-      },
-      ITEM:      {
-        color: { background: '#7BE141', border: '#41A906', highlight: { background: '#c8f5a4', border: '#2d7a04' } },
-        shape: 'diamond',
-        font:  { size: 13, face: 'Segoe UI, sans-serif' }
-      },
-      PROVEEDOR: {
-        color: { background: '#FFCD37', border: '#FFA500', highlight: { background: '#fff1a8', border: '#cc7a00' } },
-        shape: 'hexagon',
-        font:  { size: 13, face: 'Segoe UI, sans-serif' }
-      }
+      CLIENTE:   { color:{background:'#97C2FC',border:'#2B7CE9'}, shape:'ellipse' },
+      FACTURA:   { color:{background:'#FB7E81',border:'#FA0A10'}, shape:'box' },
+      ITEM:      { color:{background:'#7BE141',border:'#41A906'}, shape:'diamond' },
+      PROVEEDOR: { color:{background:'#FFCD37',border:'#FFA500'}, shape:'hexagon' }
     },
     edges: {
-      arrows: { to: { enabled: true, scaleFactor: 0.9 } },
-      font:   { size: 11, color: '#555', align: 'middle' },
-      color:  { color: '#94a3b8', highlight: '#2d6a4f' },
-      smooth: { type: 'curvedCW', roundness: 0.15 }
+      arrows:{to:{enabled:true,scaleFactor:.85}},
+      font:{size:11,color:'#666',align:'middle'},
+      color:{color:'#94a3b8',highlight:'#2d6a4f'},
+      smooth:{type:'curvedCW',roundness:.15}
     },
-    nodes: {
-      borderWidth: 2,
-      shadow: { enabled: true, size: 4, x: 2, y: 2, color: 'rgba(0,0,0,.12)' }
-    },
-    physics: {
-      enabled: true,
-      barnesHut: { gravitationalConstant: -8000, springLength: 120, springConstant: 0.04 },
-      stabilization: { iterations: 250, updateInterval: 25 }
-    },
-    interaction: {
-      hover: true,
-      tooltipDelay: 150,
-      navigationButtons: true,
-      keyboard: { enabled: true }
-    },
-    layout: { improvedLayout: true }
+    nodes:   { borderWidth:2, shadow:{enabled:true,size:4,x:2,y:2,color:'rgba(0,0,0,.1)'} },
+    physics: { barnesHut:{gravitationalConstant:-8000,springLength:120}, stabilization:{iterations:200} },
+    interaction: { hover:true, navigationButtons:true, keyboard:{enabled:true} }
   };
 
-  // ── Estado global ────────────────────────────────────────────────────────
   let network = null;
 
-  // ── Funciones de UI ──────────────────────────────────────────────────────
-  function actualizarPlaceholder() {
+  /* ── Pestañas ─────────────────────────────────────────────────── */
+  function cambiarTab(nombre, btn) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('visible'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('activa'));
+    document.getElementById('panel-' + nombre).classList.add('visible');
+    btn.classList.add('activa');
+  }
+
+  /* ── Pestaña GRAFOS ──────────────────────────────────────────── */
+  function onConsultaChange() {
+    const cfg = CONSULTAS[document.getElementById('sel-consulta').value];
+    const inp = document.getElementById('inp-id');
+    inp.placeholder = cfg.ph;
+    inp.value       = cfg.def;
+    document.getElementById('anio-group').classList.toggle('visible', cfg.anio);
+  }
+
+  function mostrarGError(msg) {
+    const el = document.getElementById('g-error');
+    el.textContent = '⚠ ' + msg; el.style.display = 'block';
+  }
+
+  async function cargarGrafo() {
+    document.getElementById('g-error').style.display = 'none';
+    document.getElementById('vacio').classList.remove('on');
+    document.getElementById('spinner').classList.add('on');
+
     const tipo = document.getElementById('sel-consulta').value;
     const cfg  = CONSULTAS[tipo];
-    const inp  = document.getElementById('inp-id');
-    inp.placeholder = cfg.placeholder;
-    inp.value       = cfg.default;
-  }
+    const id   = parseInt(document.getElementById('inp-id').value) || cfg.def;
 
-  function mostrarError(msg) {
-    const el = document.getElementById('error-msg');
-    el.textContent = '⚠ ' + msg;
-    el.style.display = 'block';
-  }
+    let url = `${API}/api/grafo/${tipo}?${cfg.param}=${id}`;
+    if (cfg.anio) {
+      const ini = document.getElementById('inp-anio-ini').value || 2024;
+      const fin = document.getElementById('inp-anio-fin').value || 2025;
+      url += `&anioInicio=${ini}&anioFin=${fin}`;
+    }
 
-  function ocultarError() {
-    document.getElementById('error-msg').style.display = 'none';
-  }
-
-  function mostrarSpinner(visible) {
-    document.getElementById('spinner').classList.toggle('activo', visible);
-  }
-
-  function mostrarVacio(visible) {
-    document.getElementById('vacio-msg').classList.toggle('visible', visible);
-  }
-
-  function actualizarStats(nodos, aristas, tiempoMs) {
-    document.getElementById('stat-nodos').textContent   = nodos;
-    document.getElementById('stat-aristas').textContent = aristas;
-    document.getElementById('stat-tiempo').textContent  = tiempoMs + ' ms';
-  }
-
-  // ── Logica principal ─────────────────────────────────────────────────────
-  async function cargarGrafo() {
-    ocultarError();
-    mostrarVacio(false);
-
-    const tipo  = document.getElementById('sel-consulta').value;
-    const id    = parseInt(document.getElementById('inp-id').value, 10) || CONSULTAS[tipo].default;
-    const param = CONSULTAS[tipo].param;
-    const url   = `${API_BASE}/api/grafo/${tipo}?${param}=${id}`;
-
-    mostrarSpinner(true);
     const t0 = Date.now();
+    let data;
+    try {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      data = await r.json();
+    } catch(e) {
+      document.getElementById('spinner').classList.remove('on');
+      mostrarGError('No se pudo conectar con la API. Asegúrate de que Java está corriendo. Detalle: ' + e.message);
+      return;
+    }
+
+    document.getElementById('spinner').classList.remove('on');
+    const ms = Date.now() - t0;
+    const nodos   = data.nodes || [];
+    const aristas = data.edges || [];
+
+    document.getElementById('g-nodos').textContent   = nodos.length;
+    document.getElementById('g-aristas').textContent = aristas.length;
+    document.getElementById('g-tiempo').textContent  = ms + ' ms';
+
+    if (nodos.length === 0) { document.getElementById('vacio').classList.add('on'); return; }
+
+    const vn = new vis.DataSet(nodos);
+    const ve = new vis.DataSet(aristas);
+    const container = document.getElementById('graph');
+    if (!network) {
+      network = new vis.Network(container, {nodes: vn, edges: ve}, VIS_OPTS);
+    } else {
+      network.setData({nodes: vn, edges: ve});
+    }
+    network.once('stabilized', () =>
+      network.fit({animation:{duration:500,easingFunction:'easeInOutQuad'}}));
+  }
+
+  /* ── Pestaña HASH TABLE ──────────────────────────────────────── */
+  function mostrarHError(msg) {
+    const el = document.getElementById('h-error');
+    el.textContent = '⚠ ' + msg; el.style.display = 'block';
+  }
+
+  async function cargarHash() {
+    document.getElementById('h-error').style.display = 'none';
+    document.getElementById('hash-content').innerHTML =
+      '<p style="color:#a0aec0;text-align:center;margin-top:30px">Cargando…</p>';
+
+    const tipo = document.getElementById('sel-hash').value;
+    const url  = `${API}/api/hash/${tipo}`;
 
     let data;
     try {
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status} al llamar ${url}`);
-      data = await resp.json();
-    } catch (err) {
-      mostrarSpinner(false);
-      mostrarError(
-        'No se pudo conectar con la API REST. ' +
-        'Asegúrate de que la app Java está corriendo en localhost:8085. ' +
-        'Detalle: ' + err.message
-      );
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      data = await r.json();
+    } catch(e) {
+      mostrarHError('No se pudo conectar con la API. Detalle: ' + e.message);
+      document.getElementById('hash-content').innerHTML = '';
       return;
     }
 
-    const tiempoMs = Date.now() - t0;
-    mostrarSpinner(false);
+    // Estadísticas
+    document.getElementById('h-cap').textContent  = data.capacity;
+    document.getElementById('h-size').textContent = data.size;
+    document.getElementById('h-lf').textContent   = data.loadFactor;
+    document.getElementById('h-col').textContent  = data.collisionCount;
 
-    const nodos   = data.nodes  || [];
-    const aristas = data.edges  || [];
-
-    actualizarStats(nodos.length, aristas.length, tiempoMs);
-
-    if (nodos.length === 0) {
-      mostrarVacio(true);
-      if (network) network.setData({ nodes: [], edges: [] });
-      return;
-    }
-
-    // Vis.js espera datasets
-    const visNodes = new vis.DataSet(nodos);
-    const visEdges = new vis.DataSet(aristas);
-
-    const container = document.getElementById('graph');
-    if (!network) {
-      network = new vis.Network(container, { nodes: visNodes, edges: visEdges }, VIS_OPTIONS);
-    } else {
-      network.setData({ nodes: visNodes, edges: visEdges });
-    }
-
-    // Ajusta la vista cuando termina la fisica
-    network.once('stabilized', () => {
-      network.fit({ animation: { duration: 500, easingFunction: 'easeInOutQuad' } });
+    // Agrupar entries por slot
+    const porSlot = {};
+    (data.entries || []).forEach(e => {
+      if (!porSlot[e.slot]) porSlot[e.slot] = [];
+      porSlot[e.slot].push(e);
     });
+
+    const slotsOcupados = Object.keys(porSlot).map(Number).sort((a,b) => a-b);
+    const slotsVacios   = data.capacity - slotsOcupados.length;
+    const maxCadena     = slotsOcupados.reduce((m, s) => Math.max(m, porSlot[s].length), 0);
+
+    // Construir tabla
+    let html = `
+      <div class="hash-stats-bar">
+        <div class="hash-stat"><div class="val">${data.capacity}</div><div class="lbl">Capacidad</div></div>
+        <div class="hash-stat"><div class="val">${data.size}</div><div class="lbl">Elementos</div></div>
+        <div class="hash-stat"><div class="val">${(parseFloat(data.loadFactor)*100).toFixed(1)}%</div><div class="lbl">Factor de carga</div></div>
+        <div class="hash-stat"><div class="val">${data.collisionCount}</div><div class="lbl">Colisiones</div></div>
+        <div class="hash-stat"><div class="val">${slotsOcupados.length}</div><div class="lbl">Slots ocupados</div></div>
+        <div class="hash-stat"><div class="val">${slotsVacios}</div><div class="lbl">Slots vacíos</div></div>
+        <div class="hash-stat"><div class="val">${maxCadena}</div><div class="lbl">Cadena máxima</div></div>
+      </div>
+      <table class="slot-table">
+        <thead>
+          <tr>
+            <th>Slot</th>
+            <th>Cadena</th>
+            <th class="bar-cell">Distribución</th>
+            <th>Entradas</th>
+          </tr>
+        </thead>
+        <tbody>`;
+
+    slotsOcupados.forEach(s => {
+      const items = porSlot[s];
+      const len   = items.length;
+      // Color: verde (1) → amarillo (2) → naranja (3) → rojo (4+)
+      const hue   = Math.max(0, 120 - (len - 1) * 40);
+      const barW  = Math.min(120, len * 30);
+      const color = `hsl(${hue}, 70%, 50%)`;
+
+      // Chips de ítems según tipo de tabla
+      const chips = items.map(it => {
+        if (it.nombre !== undefined) {
+          return `<span class="item-chip">#${it.id} · ${escHtml(it.nombre)} ($${it.precio.toFixed(2)})</span>`;
+        } else {
+          return `<span class="item-chip">#${it.id} · ${escHtml(it.nombreFinca)} (${escHtml(it.pais)})</span>`;
+        }
+      }).join('');
+
+      html += `
+        <tr>
+          <td class="slot-num">${s}</td>
+          <td><strong>${len}</strong></td>
+          <td class="bar-cell">
+            <div class="chain-bar" style="width:${barW}px;background:${color}"></div>
+          </td>
+          <td class="items-col">${chips}</td>
+        </tr>`;
+    });
+
+    html += `</tbody></table>
+      <p class="vacíos-info">${slotsVacios} de ${data.capacity} slots vacíos no se muestran</p>`;
+
+    document.getElementById('hash-content').innerHTML = html;
   }
 
-  // ── Arranque ─────────────────────────────────────────────────────────────
-  // Carga automatica al abrir la pagina
+  function escHtml(s) {
+    if (!s) return '';
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  /* ── Arranque ────────────────────────────────────────────────── */
   window.addEventListener('DOMContentLoaded', () => {
-    actualizarPlaceholder();
-    cargarGrafo();
+    onConsultaChange();
+    cargarGrafo();   // carga automática al abrir
   });
 </script>
 </body>

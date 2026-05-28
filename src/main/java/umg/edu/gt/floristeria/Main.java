@@ -79,10 +79,21 @@ public class Main {
         banner("FIN DE LA DEMOSTRACION");
         System.out.println("Tip: ejecuta con --gui (o `mvn javafx:run`) para los reportes completos.");
 
-        // API REST de la sección 4 - el servidor se mantiene escuchando en :8085
-        // hasta que el proceso reciba Ctrl+C. Si solo se desea la demo CLI,
-        // comentar esta línea.
-        GraphRestApi.iniciarServidor();
+        // Sección 3.4 — salida controlada: libera estructuras al recibir Ctrl+C o SIGTERM
+        final CustomHashTable<Integer, ItemFloral>      _cat = catalogo;
+        final CustomHashTable<Integer, ProveedorOrigen> _mar = marcas;
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.out.println();
+            System.out.println("[SHUTDOWN] Liberando estructuras en memoria...");
+            System.out.printf("[SHUTDOWN] Catalogo  : %d items liberados%n",    _cat.getSize());
+            System.out.printf("[SHUTDOWN] Marcas    : %d entradas liberadas%n", _mar.getSize());
+            System.out.println("[SHUTDOWN] Conexiones Oracle: cerradas por try-with-resources.");
+            System.out.println("[SHUTDOWN] Fin controlado del programa. Hasta pronto.");
+        }, "shutdown-hook"));
+
+        // API REST — secciones 4 y 5. Escucha en :8085 hasta Ctrl+C.
+        // Las tablas hash se pasan para exponerlas en /api/hash/catalogo y /api/hash/marcas.
+        GraphRestApi.iniciarServidor(catalogo, marcas);
     }
 
     /* --------------------------------------------------------------------- */

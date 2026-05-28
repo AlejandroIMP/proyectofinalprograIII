@@ -4,6 +4,7 @@ import umg.edu.gt.floristeria.hash.CustomHashTable;
 import umg.edu.gt.floristeria.model.ItemFloral;
 import umg.edu.gt.floristeria.model.ProveedorOrigen;
 
+import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -16,20 +17,18 @@ import java.util.Objects;
  * floristería desde Oracle Database vía JDBC nativo. Es el "pipeline de
  * carga" exigido por la sección 3 de la rúbrica.
  * <p>
- * <b>Patrón de credenciales:</b> consistente con el resto del proyecto
- * (ver {@code graph/CommercialGraph.java}), las credenciales se leen de
- * variables de entorno {@code ORACLE_URL}, {@code ORACLE_USER} y
- * {@code ORACLE_PASS}. Usar el factory estático {@link #fromEnv()} para
- * construir una instancia que las consuma; o el constructor explícito
- * cuando se necesite proveerlas directamente (p. ej. en tests).
+ * <b>Sección 3.1</b>: antes de ejecutar los SELECT principales, {@link #cargar()}
+ * llama al procedimiento PL/SQL {@code SP_VERIFICAR_CATALOGO} (definido en
+ * {@code install.sql}) que lee los conteos de las tres tablas de catálogo y
+ * los imprime en {@code DBMS_OUTPUT}. Si el procedimiento no está instalado
+ * se ignora silenciosamente para no interrumpir la carga.
  * <p>
- * <b>Driver:</b> con {@code ojdbc11} (JDBC 4+) el driver se auto-registra
- * vía SPI; no se requiere {@code Class.forName(...)}.
+ * <b>Patrón de credenciales:</b> variables de entorno {@code ORACLE_URL},
+ * {@code ORACLE_USER} y {@code ORACLE_PASS}. Usar el factory
+ * {@link #fromEnv()} para construir a partir de ellas.
  * <p>
- * <b>Errores:</b> esta clase <em>no</em> traga excepciones. {@link #cargar()}
- * y {@link #cargarMarcas()} propagan {@link SQLException} para que la
- * capa de presentación decida el comportamiento (fail-fast en CLI, alerta
- * modal en GUI).
+ * <b>Errores:</b> se propagan {@link SQLException} sin tragarlas, para que
+ * CLI (fail-fast) y GUI (alerta modal) decidan el comportamiento.
  */
 public class DatabaseCatalogoSource implements CatalogoSource {
 
@@ -37,11 +36,6 @@ public class DatabaseCatalogoSource implements CatalogoSource {
     private final String user;
     private final String password;
 
-    /**
-     * Construye una fuente que se conecta a la URL JDBC indicada con las
-     * credenciales dadas. Falla rápido si alguno de los tres parámetros
-     * es {@code null}.
-     */
     public DatabaseCatalogoSource(String url, String user, String password) {
         this.url      = Objects.requireNonNull(url,      "url no puede ser null");
         this.user     = Objects.requireNonNull(user,     "user no puede ser null");
@@ -52,9 +46,7 @@ public class DatabaseCatalogoSource implements CatalogoSource {
      * Construye la fuente leyendo {@code ORACLE_URL}, {@code ORACLE_USER}
      * y {@code ORACLE_PASS} del entorno.
      *
-     * @throws IllegalStateException si alguna variable falta, indicando
-     *         cuáles son requeridas. Esto se prefiere sobre {@code null}
-     *         silencioso para dar un mensaje accionable al desarrollador.
+     * @throws IllegalStateException si alguna variable falta.
      */
     public static DatabaseCatalogoSource fromEnv() {
         String url  = System.getenv("ORACLE_URL");
@@ -77,18 +69,25 @@ public class DatabaseCatalogoSource implements CatalogoSource {
         long t0 = System.nanoTime();
         int filas = 0;
 
-        try (Connection conn = DriverManager.getConnection(url, user, password);
-             Statement  stmt = conn.createStatement();
-             ResultSet  rs   = stmt.executeQuery(query)) {
+        try (Connection conn = DriverManager.getConnection(url, user, password)) {
 
-            while (rs.next()) {
-                ItemFloral item = new ItemFloral(
-                        rs.getInt("id_item"),
-                        rs.getString("nombre_flor"),
-                        rs.getDouble("precio_unitario"),
-                        rs.getInt("id_proveedor"));
-                catalogo.put(item.id(), item);
-                filas++;
+            // Sección 3.1: invocar procedimiento PL/SQL de verificación de catálogos.
+            // Si no existe (install.sql no ejecutado) se ignora sin lanzar excepción.
+            try (CallableStatement cs = conn.prepareCall("{ CALL SP_VERIFICAR_CATALOGO() }")) {
+                cs.execute();
+            } catch (SQLException ignored) { /* procedimiento no instalado → continuar */ }
+
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs   = stmt.executeQuery(query)) {
+                while (rs.next()) {
+                    ItemFloral item = new ItemFloral(
+                            rs.getInt("id_item"),
+                            rs.getString("nombre_flor"),
+                            rs.getDouble("precio_unitario"),
+                            rs.getInt("id_proveedor"));
+                    catalogo.put(item.id(), item);
+                    filas++;
+                }
             }
         }
 
@@ -131,13 +130,8 @@ public class DatabaseCatalogoSource implements CatalogoSource {
         return "Oracle (" + sanitizar(url) + ")";
     }
 
-    /**
-     * Si la URL contiene credenciales embebidas (formato no recomendado pero
-     * posible: {@code jdbc:oracle:thin:user/pass@host:1521/svc}), las oculta
-     * antes de mostrarla en logs o en la GUI.
-     */
     private static String sanitizar(String url) {
-        int at = url.indexOf('@');
+        int at    = url.indexOf('@');
         int colon = url.indexOf(':', "jdbc:oracle:thin:".length());
         if (at > 0 && colon > 0 && colon < at) {
             return url.substring(0, colon + 1) + "****@" + url.substring(at + 1);

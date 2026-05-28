@@ -6,6 +6,9 @@ import com.sun.net.httpserver.HttpServer;
 import umg.edu.gt.floristeria.graph.CommercialGraph;
 import umg.edu.gt.floristeria.graph.Nodo;
 import umg.edu.gt.floristeria.graph.Arista;
+import umg.edu.gt.floristeria.hash.CustomHashTable;
+import umg.edu.gt.floristeria.model.ItemFloral;
+import umg.edu.gt.floristeria.model.ProveedorOrigen;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -13,39 +16,77 @@ import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Year;
 import java.util.List;
 
 /**
  * Servidor HTTP nativo (com.sun.net.httpserver) que expone la API REST
- * de grafos del proyecto y sirve el frontend HTML5/Vis.js.
+ * de grafos y de la tabla hash del proyecto, además de servir el frontend
+ * HTML5/Vis.js.
  *
- * <h2>Endpoints</h2>
+ * <h2>Endpoints de grafos</h2>
  * <ul>
- *   <li>GET /api/grafo/trazabilidad?factura={id}     — trazabilidad de una factura</li>
- *   <li>GET /api/grafo/cliente-productos?cliente={id} — todos los productos de un cliente</li>
- *   <li>GET /api/grafo/proveedor-impacto?proveedor={id} — facturas que contienen productos del proveedor</li>
- *   <li>GET /                                         — sirve web/index.html</li>
+ *   <li>GET /api/grafo/trazabilidad?factura={id}</li>
+ *   <li>GET /api/grafo/cliente-productos?cliente={id}</li>
+ *   <li>GET /api/grafo/proveedor-impacto?proveedor={id}</li>
+ *   <li>GET /api/grafo/cliente-productos-anio?cliente={id}&amp;anioInicio={y}&amp;anioFin={y}</li>
+ *   <li>GET /api/grafo/trazabilidad-inversa?item={id}</li>
  * </ul>
  *
- * Todos los endpoints JSON incluyen headers CORS para que el navegador
- * pueda hacer fetch desde cualquier origen.
+ * <h2>Endpoints de tabla hash</h2>
+ * <ul>
+ *   <li>GET /api/hash/catalogo  — serializa la tabla hash de ítems florales</li>
+ *   <li>GET /api/hash/marcas    — serializa la tabla hash de proveedores</li>
+ * </ul>
+ *
+ * <h2>Frontend</h2>
+ * <ul>
+ *   <li>GET /  — sirve web/index.html</li>
+ * </ul>
  */
 public class GraphRestApi {
 
-    public static void iniciarServidor() {
+    // Referencias a las hash tables cargadas al arrancar la aplicación.
+    // Se establecen una sola vez en iniciarServidor() y luego son solo-lectura.
+    private static CustomHashTable<Integer, ItemFloral>      catalogoRef;
+    private static CustomHashTable<Integer, ProveedorOrigen> marcasRef;
+
+    /**
+     * Lanza el servidor HTTP en el puerto 8085 y registra todos los endpoints.
+     *
+     * @param catalogo tabla hash del catálogo de ítems (puede ser null si no hay Oracle)
+     * @param marcas   tabla hash de proveedores/marcas (puede ser null)
+     */
+    public static void iniciarServidor(
+            CustomHashTable<Integer, ItemFloral>      catalogo,
+            CustomHashTable<Integer, ProveedorOrigen> marcas) {
+        catalogoRef = catalogo;
+        marcasRef   = marcas;
+
         try {
             HttpServer server = HttpServer.create(new InetSocketAddress(8085), 0);
 
-            server.createContext("/api/grafo/trazabilidad",     new TrazabilidadHandler());
-            server.createContext("/api/grafo/cliente-productos", new ClienteProductosHandler());
-            server.createContext("/api/grafo/proveedor-impacto", new ProveedorImpactoHandler());
-            server.createContext("/",                            new StaticFileHandler());
+            // Grafos
+            server.createContext("/api/grafo/trazabilidad",            new TrazabilidadHandler());
+            server.createContext("/api/grafo/cliente-productos-anio",  new ClienteProductosAnioHandler());
+            server.createContext("/api/grafo/cliente-productos",       new ClienteProductosHandler());
+            server.createContext("/api/grafo/proveedor-impacto",       new ProveedorImpactoHandler());
+            server.createContext("/api/grafo/trazabilidad-inversa",    new TrazabilidadInversaHandler());
 
-            server.setExecutor(null); // ejecutor por defecto (hilo por petición)
+            // Tabla hash
+            server.createContext("/api/hash/catalogo",                 new HashCatalogoHandler());
+            server.createContext("/api/hash/marcas",                   new HashMarcasHandler());
+
+            // Frontend estático
+            server.createContext("/",                                  new StaticFileHandler());
+
+            server.setExecutor(null);
             server.start();
+
             System.out.println("\n====================================================");
             System.out.println(" API REST NATIVA ESCUCHANDO EN: http://localhost:8085");
-            System.out.println(" Frontend:  http://localhost:8085/");
+            System.out.println(" Frontend  : http://localhost:8085/");
+            System.out.println(" Hash REST : http://localhost:8085/api/hash/catalogo");
             System.out.println("====================================================");
         } catch (IOException e) {
             System.err.println("Error al iniciar el servidor HTTP: " + e.getMessage());
@@ -53,42 +94,38 @@ public class GraphRestApi {
     }
 
     /* ------------------------------------------------------------------ */
-    /*  Utilidades compartidas                                             */
+    /*  Utilidades compartidas por todos los handlers                     */
     /* ------------------------------------------------------------------ */
 
-    /** Aplica headers CORS y maneja pre-flight OPTIONS. Retorna true si el
-     *  handler debe detenerse (fue una petición OPTIONS). */
-    private static boolean aplicarCors(HttpExchange exchange) throws IOException {
-        exchange.getResponseHeaders().add("Access-Control-Allow-Origin",  "*");
-        exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, OPTIONS");
-        exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
-        if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
-            exchange.sendResponseHeaders(204, -1);
+    /** Aplica CORS y gestiona pre-flight OPTIONS. Retorna true si el handler debe parar. */
+    private static boolean aplicarCors(HttpExchange ex) throws IOException {
+        ex.getResponseHeaders().add("Access-Control-Allow-Origin",  "*");
+        ex.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, OPTIONS");
+        ex.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
+        if ("OPTIONS".equalsIgnoreCase(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(204, -1);
             return true;
         }
         return false;
     }
 
-    /** Extrae el valor de un parámetro de la query string. Retorna {@code defaultValue}
-     *  si el parámetro no está presente o no es un entero válido. */
-    private static int extraerParam(String queryString, String nombre, int defaultValue) {
-        if (queryString == null) return defaultValue;
-        for (String parte : queryString.split("&")) {
-            if (parte.startsWith(nombre + "=")) {
-                try { return Integer.parseInt(parte.substring(nombre.length() + 1)); }
-                catch (NumberFormatException ignored) { return defaultValue; }
+    /** Extrae un parámetro entero de la query string. */
+    private static int param(String qs, String nombre, int defecto) {
+        if (qs == null) return defecto;
+        for (String p : qs.split("&")) {
+            if (p.startsWith(nombre + "=")) {
+                try { return Integer.parseInt(p.substring(nombre.length() + 1)); }
+                catch (NumberFormatException ignored) { return defecto; }
             }
         }
-        return defaultValue;
+        return defecto;
     }
 
-    /** Serializa listas de nodos y aristas al formato JSON que consume Vis.js. */
-    private static String construirJson(List<Nodo> nodos, List<Arista> aristas) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("{\n  \"nodes\": [\n");
+    /** Serializa listas de nodos y aristas al JSON que consume Vis.js. */
+    private static String grafoJson(List<Nodo> nodos, List<Arista> aristas) {
+        StringBuilder sb = new StringBuilder("{\n  \"nodes\": [\n");
         for (int i = 0; i < nodos.size(); i++) {
             Nodo n = nodos.get(i);
-            // Escapado básico de comillas en label
             String label = n.getLabel() == null ? "" : n.getLabel().replace("\"", "\\\"");
             sb.append(String.format(
                     "    {\"id\": \"%s\", \"label\": \"%s\", \"group\": \"%s\"}",
@@ -107,81 +144,160 @@ public class GraphRestApi {
         return sb.toString();
     }
 
-    private static void enviarJson(HttpExchange exchange, String json) throws IOException {
+    private static void enviarJson(HttpExchange ex, String json, int status) throws IOException {
         byte[] body = json.getBytes("UTF-8");
-        exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-        exchange.sendResponseHeaders(200, body.length);
-        try (OutputStream os = exchange.getResponseBody()) {
-            os.write(body);
-        }
+        ex.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+        ex.sendResponseHeaders(status, body.length);
+        try (OutputStream os = ex.getResponseBody()) { os.write(body); }
+    }
+
+    private static void enviarJson(HttpExchange ex, String json) throws IOException {
+        enviarJson(ex, json, 200);
     }
 
     /* ------------------------------------------------------------------ */
-    /*  Handler 1 — Trazabilidad de factura                               */
+    /*  Handlers de grafos                                                 */
     /* ------------------------------------------------------------------ */
 
     private static class TrazabilidadHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            if (aplicarCors(exchange)) return;
-            int id = extraerParam(exchange.getRequestURI().getQuery(), "factura", 1);
-            CommercialGraph grafo = new CommercialGraph();
-            grafo.construirGrafoTrazabilidad(id);
-            enviarJson(exchange, construirJson(grafo.getNodos(), grafo.getAristas()));
+        @Override public void handle(HttpExchange ex) throws IOException {
+            if (aplicarCors(ex)) return;
+            int id = param(ex.getRequestURI().getQuery(), "factura", 1);
+            CommercialGraph g = new CommercialGraph();
+            g.construirGrafoTrazabilidad(id);
+            enviarJson(ex, grafoJson(g.getNodos(), g.getAristas()));
         }
     }
-
-    /* ------------------------------------------------------------------ */
-    /*  Handler 2 — Productos de un cliente                               */
-    /* ------------------------------------------------------------------ */
 
     private static class ClienteProductosHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            if (aplicarCors(exchange)) return;
-            int id = extraerParam(exchange.getRequestURI().getQuery(), "cliente", 1);
-            CommercialGraph grafo = new CommercialGraph();
-            grafo.construirGrafoClienteProductos(id);
-            enviarJson(exchange, construirJson(grafo.getNodos(), grafo.getAristas()));
+        @Override public void handle(HttpExchange ex) throws IOException {
+            if (aplicarCors(ex)) return;
+            int id = param(ex.getRequestURI().getQuery(), "cliente", 1);
+            CommercialGraph g = new CommercialGraph();
+            g.construirGrafoClienteProductos(id);
+            enviarJson(ex, grafoJson(g.getNodos(), g.getAristas()));
         }
     }
-
-    /* ------------------------------------------------------------------ */
-    /*  Handler 3 — Impacto de un proveedor                               */
-    /* ------------------------------------------------------------------ */
 
     private static class ProveedorImpactoHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            if (aplicarCors(exchange)) return;
-            int id = extraerParam(exchange.getRequestURI().getQuery(), "proveedor", 5);
-            CommercialGraph grafo = new CommercialGraph();
-            grafo.construirGrafoProveedorImpacto(id);
-            enviarJson(exchange, construirJson(grafo.getNodos(), grafo.getAristas()));
+        @Override public void handle(HttpExchange ex) throws IOException {
+            if (aplicarCors(ex)) return;
+            int id = param(ex.getRequestURI().getQuery(), "proveedor", 5);
+            CommercialGraph g = new CommercialGraph();
+            g.construirGrafoProveedorImpacto(id);
+            enviarJson(ex, grafoJson(g.getNodos(), g.getAristas()));
+        }
+    }
+
+    private static class ClienteProductosAnioHandler implements HttpHandler {
+        @Override public void handle(HttpExchange ex) throws IOException {
+            if (aplicarCors(ex)) return;
+            String qs = ex.getRequestURI().getQuery();
+            int cliente    = param(qs, "cliente",    1);
+            int anioInicio = param(qs, "anioInicio", 2020);
+            int anioFin    = param(qs, "anioFin",    Year.now().getValue());
+            CommercialGraph g = new CommercialGraph();
+            g.construirGrafoClienteProductosPorAnio(cliente, anioInicio, anioFin);
+            enviarJson(ex, grafoJson(g.getNodos(), g.getAristas()));
+        }
+    }
+
+    private static class TrazabilidadInversaHandler implements HttpHandler {
+        @Override public void handle(HttpExchange ex) throws IOException {
+            if (aplicarCors(ex)) return;
+            int id = param(ex.getRequestURI().getQuery(), "item", 50);
+            CommercialGraph g = new CommercialGraph();
+            g.construirGrafoTrazabilidadInversa(id);
+            enviarJson(ex, grafoJson(g.getNodos(), g.getAristas()));
         }
     }
 
     /* ------------------------------------------------------------------ */
-    /*  Handler 4 — Archivos estáticos (sirve web/index.html)             */
+    /*  Handlers de tabla hash                                             */
+    /* ------------------------------------------------------------------ */
+
+    private static class HashCatalogoHandler implements HttpHandler {
+        @Override public void handle(HttpExchange ex) throws IOException {
+            if (aplicarCors(ex)) return;
+            if (catalogoRef == null) {
+                enviarJson(ex, "{\"error\":\"Tabla no inicializada\"}", 503);
+                return;
+            }
+            StringBuilder sb = new StringBuilder();
+            sb.append("{\n");
+            sb.append("  \"tabla\": \"Catalogo de Items Florales\",\n");
+            sb.append("  \"capacity\": ").append(catalogoRef.getCapacity()).append(",\n");
+            sb.append("  \"size\": ").append(catalogoRef.getSize()).append(",\n");
+            sb.append("  \"collisionCount\": ").append(catalogoRef.getCollisionCount()).append(",\n");
+            double lf = (double) catalogoRef.getSize() / catalogoRef.getCapacity();
+            sb.append(String.format("  \"loadFactor\": \"%.4f\",\n", lf));
+            sb.append("  \"entries\": [\n");
+            var entries = catalogoRef.entries();
+            for (int i = 0; i < entries.size(); i++) {
+                var e = entries.get(i);
+                ItemFloral item = (ItemFloral) e.value();
+                String nombre = item.nombreFlor() == null ? ""
+                        : item.nombreFlor().replace("\"", "\\\"");
+                sb.append(String.format(
+                        "    {\"slot\": %d, \"id\": %d, \"nombre\": \"%s\", \"precio\": %.2f, \"idProveedor\": %d}",
+                        e.slot(), item.id(), nombre, item.precio(), item.idProveedor()));
+                if (i < entries.size() - 1) sb.append(",\n");
+            }
+            sb.append("\n  ]\n}");
+            enviarJson(ex, sb.toString());
+        }
+    }
+
+    private static class HashMarcasHandler implements HttpHandler {
+        @Override public void handle(HttpExchange ex) throws IOException {
+            if (aplicarCors(ex)) return;
+            if (marcasRef == null) {
+                enviarJson(ex, "{\"error\":\"Tabla no inicializada\"}", 503);
+                return;
+            }
+            StringBuilder sb = new StringBuilder();
+            sb.append("{\n");
+            sb.append("  \"tabla\": \"Proveedores / Marcas\",\n");
+            sb.append("  \"capacity\": ").append(marcasRef.getCapacity()).append(",\n");
+            sb.append("  \"size\": ").append(marcasRef.getSize()).append(",\n");
+            sb.append("  \"collisionCount\": ").append(marcasRef.getCollisionCount()).append(",\n");
+            double lf = (double) marcasRef.getSize() / marcasRef.getCapacity();
+            sb.append(String.format("  \"loadFactor\": \"%.4f\",\n", lf));
+            sb.append("  \"entries\": [\n");
+            var entries = marcasRef.entries();
+            for (int i = 0; i < entries.size(); i++) {
+                var e = entries.get(i);
+                ProveedorOrigen p = (ProveedorOrigen) e.value();
+                String finca = p.nombreFinca() == null ? "" : p.nombreFinca().replace("\"", "\\\"");
+                String pais  = p.pais()        == null ? "" : p.pais().replace("\"", "\\\"");
+                sb.append(String.format(
+                        "    {\"slot\": %d, \"id\": %d, \"nombreFinca\": \"%s\", \"pais\": \"%s\"}",
+                        e.slot(), p.id(), finca, pais));
+                if (i < entries.size() - 1) sb.append(",\n");
+            }
+            sb.append("\n  ]\n}");
+            enviarJson(ex, sb.toString());
+        }
+    }
+
+    /* ------------------------------------------------------------------ */
+    /*  Handler estático — sirve web/index.html                           */
     /* ------------------------------------------------------------------ */
 
     private static class StaticFileHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            // Solo GET al raíz redirige al visualizador
+        @Override public void handle(HttpExchange ex) throws IOException {
             Path archivo = Paths.get("web", "index.html");
             if (!Files.exists(archivo)) {
-                byte[] cuerpo = "web/index.html no encontrado. Crea el directorio web/ con index.html."
-                        .getBytes("UTF-8");
-                exchange.getResponseHeaders().set("Content-Type", "text/plain; charset=UTF-8");
-                exchange.sendResponseHeaders(404, cuerpo.length);
-                try (OutputStream os = exchange.getResponseBody()) { os.write(cuerpo); }
+                byte[] cuerpo = "web/index.html no encontrado.".getBytes("UTF-8");
+                ex.getResponseHeaders().set("Content-Type", "text/plain; charset=UTF-8");
+                ex.sendResponseHeaders(404, cuerpo.length);
+                try (OutputStream os = ex.getResponseBody()) { os.write(cuerpo); }
                 return;
             }
             byte[] body = Files.readAllBytes(archivo);
-            exchange.getResponseHeaders().set("Content-Type", "text/html; charset=UTF-8");
-            exchange.sendResponseHeaders(200, body.length);
-            try (OutputStream os = exchange.getResponseBody()) { os.write(body); }
+            ex.getResponseHeaders().set("Content-Type", "text/html; charset=UTF-8");
+            ex.sendResponseHeaders(200, body.length);
+            try (OutputStream os = ex.getResponseBody()) { os.write(body); }
         }
     }
 }

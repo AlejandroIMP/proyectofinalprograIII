@@ -154,3 +154,34 @@ PROMPT  Instalacion completa.
 PROMPT  Tablas: 6  |  Tipos cliente: 4  |  Proveedores: 3
 PROMPT  Items: 4   |  Clientes: 2       |  Facturas: 2
 PROMPT =======================================================
+
+-- ================================================================
+-- Procedimiento PL/SQL — Sección 3.1 de la rúbrica
+-- Verifica los catálogos y registra conteos + tiempo de lectura
+-- Uso desde SQL*Plus:  SET SERVEROUTPUT ON; EXEC SP_VERIFICAR_CATALOGO;
+-- ================================================================
+CREATE OR REPLACE PROCEDURE SP_VERIFICAR_CATALOGO IS
+    v_inicio     NUMBER;
+    v_fin        NUMBER;
+    v_cnt_item   NUMBER;
+    v_cnt_prov   NUMBER;
+    v_cnt_tipo   NUMBER;
+BEGIN
+    v_inicio := DBMS_UTILITY.GET_TIME;   -- centésimas de segundo
+
+    SELECT COUNT(*) INTO v_cnt_item FROM ITEM_FLORAL;
+    SELECT COUNT(*) INTO v_cnt_prov FROM PROVEEDOR_ORIGEN;
+    SELECT COUNT(*) INTO v_cnt_tipo FROM TIPO_CLIENTE;
+
+    v_fin := DBMS_UTILITY.GET_TIME;
+
+    DBMS_OUTPUT.PUT_LINE('=== SP_VERIFICAR_CATALOGO ===');
+    DBMS_OUTPUT.PUT_LINE('ITEM_FLORAL     : ' || v_cnt_item || ' registros');
+    DBMS_OUTPUT.PUT_LINE('PROVEEDOR_ORIGEN: ' || v_cnt_prov || ' registros');
+    DBMS_OUTPUT.PUT_LINE('TIPO_CLIENTE    : ' || v_cnt_tipo || ' registros');
+    DBMS_OUTPUT.PUT_LINE('Tiempo Oracle   : ' || ((v_fin - v_inicio) * 10) || ' ms');
+    DBMS_OUTPUT.PUT_LINE('==============================');
+END SP_VERIFICAR_CATALOGO;
+/
+
+PROMPT Procedimiento SP_VERIFICAR_CATALOGO creado correctamente.
