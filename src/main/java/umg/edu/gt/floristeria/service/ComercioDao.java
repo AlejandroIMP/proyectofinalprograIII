@@ -246,6 +246,18 @@ public final class ComercioDao {
         }
     }
 
+    public void insertarTipoCliente(int id, String nombre, double descuento) throws SQLException {
+        try (Connection conn = DriverManager.getConnection(url, user, password);
+             PreparedStatement ps = conn.prepareStatement(
+                     "INSERT INTO TIPO_CLIENTE (id_tipo_cliente, nombre_tipo, descuento_base) "
+                   + "VALUES (?, ?, ?)")) {
+            ps.setInt(1, id);
+            ps.setString(2, nombre);
+            ps.setDouble(3, descuento);
+            ps.executeUpdate();
+        }
+    }
+
     /* ------------------------------------------------------------------ */
     /*  Credenciales (mismo patrón que DatabaseCatalogoSource)             */
     /* ------------------------------------------------------------------ */

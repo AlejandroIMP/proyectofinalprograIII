@@ -9,10 +9,12 @@ import umg.edu.gt.floristeria.graph.Arista;
 import umg.edu.gt.floristeria.hash.CustomHashTable;
 import umg.edu.gt.floristeria.model.ItemFloral;
 import umg.edu.gt.floristeria.model.ProveedorOrigen;
+import umg.edu.gt.floristeria.model.TipoCliente;
 import umg.edu.gt.floristeria.service.ComercioDao;
 import umg.edu.gt.floristeria.service.ReportService;
 import umg.edu.gt.floristeria.service.ReporteGrafoCliente;
 import umg.edu.gt.floristeria.service.WordReportExporter;
+import umg.edu.gt.floristeria.util.Durations;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -61,18 +63,22 @@ public class GraphRestApi {
     // Se establecen una sola vez en iniciarServidor() y luego son solo-lectura.
     private static CustomHashTable<Integer, ItemFloral>      catalogoRef;
     private static CustomHashTable<Integer, ProveedorOrigen> marcasRef;
+    private static CustomHashTable<Integer, TipoCliente>     tiposRef;
 
     /**
      * Lanza el servidor HTTP en el puerto 8085 y registra todos los endpoints.
      *
      * @param catalogo tabla hash del catálogo de ítems (puede ser null si no hay Oracle)
      * @param marcas   tabla hash de proveedores/marcas (puede ser null)
+     * @param tipos    tabla hash de tipos de cliente (puede ser null)
      */
     public static void iniciarServidor(
             CustomHashTable<Integer, ItemFloral>      catalogo,
-            CustomHashTable<Integer, ProveedorOrigen> marcas) {
+            CustomHashTable<Integer, ProveedorOrigen> marcas,
+            CustomHashTable<Integer, TipoCliente>     tipos) {
         catalogoRef = catalogo;
         marcasRef   = marcas;
+        tiposRef    = tipos;
 
         try {
             HttpServer server = HttpServer.create(new InetSocketAddress(8085), 0);
@@ -83,10 +89,12 @@ public class GraphRestApi {
             server.createContext("/api/grafo/cliente-productos",       new ClienteProductosHandler());
             server.createContext("/api/grafo/proveedor-impacto",       new ProveedorImpactoHandler());
             server.createContext("/api/grafo/trazabilidad-inversa",    new TrazabilidadInversaHandler());
+            server.createContext("/api/grafo/tipo-clientes",           new TipoClientesGrafoHandler());
 
             // Tabla hash (GET = leer, POST = agregar con detección de colisión)
             server.createContext("/api/hash/catalogo",                 new HashCatalogoHandler());
             server.createContext("/api/hash/marcas",                   new HashMarcasHandler());
+            server.createContext("/api/hash/tipos-cliente",            new HashTiposClienteHandler());
 
             // Escrituras comerciales y soporte de formularios
             server.createContext("/api/grafo/factura",                 new FacturaHandler());
@@ -205,6 +213,27 @@ public class GraphRestApi {
         return s == null ? "" : s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
+    /**
+     * Construye el JSON común de una búsqueda por ID en una tabla hash:
+     * slot consultado, probes recorridos y tiempo de la operación {@code get()}.
+     *
+     * @param id          clave buscada
+     * @param r           resultado de {@code tabla.get(id)} (slot/probes/tiempo)
+     * @param extraCampos campos específicos del valor ya formateados como JSON
+     *                    (p. ej. {@code "nombre":"...","precio":1.50}), o "" si no se encontró
+     */
+    private static String buscarJson(int id, CustomHashTable.SearchResult<?> r, String extraCampos) {
+        boolean found = r.value() != null;
+        return "{\"buscar\":true,\"id\":" + id
+            + ",\"found\":" + found
+            + ",\"slot\":" + r.tablePosition()
+            + ",\"probes\":" + r.probes()
+            + ",\"durationNs\":" + r.durationNanoseconds()
+            + ",\"tiempo\":\"" + esc(Durations.human(r.durationNanoseconds())) + "\""
+            + (found && !extraCampos.isEmpty() ? "," + extraCampos : "")
+            + "}";
+    }
+
     /* ------------------------------------------------------------------ */
     /*  Handlers de grafos                                                 */
     /* ------------------------------------------------------------------ */
@@ -262,6 +291,16 @@ public class GraphRestApi {
         }
     }
 
+    private static class TipoClientesGrafoHandler implements HttpHandler {
+        @Override public void handle(HttpExchange ex) throws IOException {
+            if (aplicarCors(ex)) return;
+            int id = param(ex.getRequestURI().getQuery(), "tipo", 2);
+            CommercialGraph g = new CommercialGraph();
+            g.construirGrafoTipoClientes(id);
+            enviarJson(ex, grafoJson(g.getNodos(), g.getAristas()));
+        }
+    }
+
     /* ------------------------------------------------------------------ */
     /*  Handlers de tabla hash                                             */
     /* ------------------------------------------------------------------ */
@@ -272,6 +311,17 @@ public class GraphRestApi {
             if ("POST".equalsIgnoreCase(ex.getRequestMethod())) { agregarItem(ex); return; }
             if (catalogoRef == null) {
                 enviarJson(ex, "{\"error\":\"Tabla no inicializada\"}", 503);
+                return;
+            }
+            String qs = ex.getRequestURI().getQuery();
+            if (qs != null && qs.contains("buscar=")) {
+                int id = param(qs, "buscar", Integer.MIN_VALUE);
+                var r = catalogoRef.get(id);
+                ItemFloral v = r.value();
+                String extra = v == null ? "" : String.format(Locale.ROOT,
+                        "\"nombre\":\"%s\",\"precio\":%.2f,\"idProveedor\":%d",
+                        esc(v.nombreFlor()), v.precio(), v.idProveedor());
+                enviarJson(ex, buscarJson(id, r, extra));
                 return;
             }
             StringBuilder sb = new StringBuilder();
@@ -307,6 +357,17 @@ public class GraphRestApi {
                 enviarJson(ex, "{\"error\":\"Tabla no inicializada\"}", 503);
                 return;
             }
+            String qs = ex.getRequestURI().getQuery();
+            if (qs != null && qs.contains("buscar=")) {
+                int id = param(qs, "buscar", Integer.MIN_VALUE);
+                var r = marcasRef.get(id);
+                ProveedorOrigen v = r.value();
+                String extra = v == null ? "" :
+                        "\"nombreFinca\":\"" + esc(v.nombreFinca())
+                      + "\",\"pais\":\"" + esc(v.pais()) + "\"";
+                enviarJson(ex, buscarJson(id, r, extra));
+                return;
+            }
             StringBuilder sb = new StringBuilder();
             sb.append("{\n");
             sb.append("  \"tabla\": \"Proveedores / Marcas\",\n");
@@ -325,6 +386,48 @@ public class GraphRestApi {
                 sb.append(String.format(
                         "    {\"slot\": %d, \"id\": %d, \"nombreFinca\": \"%s\", \"pais\": \"%s\"}",
                         e.slot(), p.id(), finca, pais));
+                if (i < entries.size() - 1) sb.append(",\n");
+            }
+            sb.append("\n  ]\n}");
+            enviarJson(ex, sb.toString());
+        }
+    }
+
+    private static class HashTiposClienteHandler implements HttpHandler {
+        @Override public void handle(HttpExchange ex) throws IOException {
+            if (aplicarCors(ex)) return;
+            if ("POST".equalsIgnoreCase(ex.getRequestMethod())) { agregarTipoCliente(ex); return; }
+            if (tiposRef == null) {
+                enviarJson(ex, "{\"error\":\"Tabla no inicializada\"}", 503);
+                return;
+            }
+            String qs = ex.getRequestURI().getQuery();
+            if (qs != null && qs.contains("buscar=")) {
+                int id = param(qs, "buscar", Integer.MIN_VALUE);
+                var r = tiposRef.get(id);
+                TipoCliente v = r.value();
+                String extra = v == null ? "" : String.format(Locale.ROOT,
+                        "\"nombre\":\"%s\",\"descuento\":%.2f", esc(v.nombre()), v.descuento());
+                enviarJson(ex, buscarJson(id, r, extra));
+                return;
+            }
+            StringBuilder sb = new StringBuilder();
+            sb.append("{\n");
+            sb.append("  \"tabla\": \"Tipos de Cliente\",\n");
+            sb.append("  \"capacity\": ").append(tiposRef.getCapacity()).append(",\n");
+            sb.append("  \"size\": ").append(tiposRef.getSize()).append(",\n");
+            sb.append("  \"collisionCount\": ").append(tiposRef.getCollisionCount()).append(",\n");
+            double lf = (double) tiposRef.getSize() / tiposRef.getCapacity();
+            sb.append(String.format(Locale.ROOT, "  \"loadFactor\": \"%.4f\",\n", lf));
+            sb.append("  \"entries\": [\n");
+            var entries = tiposRef.entries();
+            for (int i = 0; i < entries.size(); i++) {
+                var e = entries.get(i);
+                TipoCliente tc = (TipoCliente) e.value();
+                String nombre = tc.nombre() == null ? "" : tc.nombre().replace("\"", "\\\"");
+                sb.append(String.format(Locale.ROOT,
+                        "    {\"slot\": %d, \"id\": %d, \"nombre\": \"%s\", \"descuento\": %.2f}",
+                        e.slot(), tc.id(), nombre, tc.descuento()));
                 if (i < entries.size() - 1) sb.append(",\n");
             }
             sb.append("\n  ]\n}");
@@ -468,6 +571,71 @@ public class GraphRestApi {
                 + "\"capacity\":" + marcasRef.getCapacity() + ","
                 + "\"collisionCount\":" + marcasRef.getCollisionCount() + ","
                 + "\"collisionDelta\":" + (marcasRef.getCollisionCount() - colAntes) + ","
+                + "\"rehash\":" + rehash + ","
+                + "\"persistidoEnOracle\":" + persistido
+                + "}";
+        }
+        enviarJson(ex, resultado);
+    }
+
+    /** POST /api/hash/tipos-cliente — agrega un TipoCliente y reporta la colisión. */
+    private static void agregarTipoCliente(HttpExchange ex) throws IOException {
+        if (tiposRef == null) { enviarJson(ex, "{\"ok\":false,\"error\":\"Tabla no inicializada\"}", 503); return; }
+        Map<String, String> f = leerForm(ex);
+        int    id;
+        double descuento;
+        String nombre = f.getOrDefault("nombre", "").trim();
+        try {
+            id        = Integer.parseInt(f.getOrDefault("id", "").trim());
+            descuento = Double.parseDouble(f.getOrDefault("descuento", "0").trim());
+        } catch (NumberFormatException nfe) {
+            enviarJson(ex, "{\"ok\":false,\"error\":\"id y descuento deben ser numéricos\"}", 400);
+            return;
+        }
+        if (nombre.isEmpty()) { enviarJson(ex, "{\"ok\":false,\"error\":\"el nombre es obligatorio\"}", 400); return; }
+
+        boolean persistido = false;
+        ComercioDao dao = new ComercioDao();
+        if (dao.disponible()) {
+            try { dao.insertarTipoCliente(id, nombre, descuento); persistido = true; }
+            catch (SQLException e) {
+                enviarJson(ex, "{\"ok\":false,\"error\":\"Oracle: " + esc(e.getMessage()) + "\"}", 409);
+                return;
+            }
+        }
+
+        String resultado;
+        synchronized (tiposRef) {
+            int capAntes     = tiposRef.getCapacity();
+            int colAntes     = tiposRef.getCollisionCount();
+            boolean esUpdate = tiposRef.containsKey(id);
+
+            tiposRef.put(id, new TipoCliente(id, nombre, descuento));
+
+            var r      = tiposRef.get(id);
+            int slot   = r.tablePosition();
+            int chain  = tiposRef.chainLengthAt(slot);
+            boolean rehash   = tiposRef.getCapacity() != capAntes;
+            boolean colision = !esUpdate && chain > 1;
+
+            StringBuilder claves = new StringBuilder("[");
+            var ks = tiposRef.keysAt(slot);
+            for (int i = 0; i < ks.size(); i++) { if (i > 0) claves.append(","); claves.append(ks.get(i)); }
+            claves.append("]");
+
+            resultado = "{"
+                + "\"ok\":true,"
+                + "\"id\":" + id + ","
+                + "\"slot\":" + slot + ","
+                + "\"esActualizacion\":" + esUpdate + ","
+                + "\"colision\":" + colision + ","
+                + "\"chainLength\":" + chain + ","
+                + "\"clavesEnSlot\":" + claves + ","
+                + "\"probes\":" + r.probes() + ","
+                + "\"size\":" + tiposRef.getSize() + ","
+                + "\"capacity\":" + tiposRef.getCapacity() + ","
+                + "\"collisionCount\":" + tiposRef.getCollisionCount() + ","
+                + "\"collisionDelta\":" + (tiposRef.getCollisionCount() - colAntes) + ","
                 + "\"rehash\":" + rehash + ","
                 + "\"persistidoEnOracle\":" + persistido
                 + "}";

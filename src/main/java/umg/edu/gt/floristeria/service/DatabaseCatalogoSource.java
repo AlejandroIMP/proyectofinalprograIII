@@ -3,6 +3,7 @@ package umg.edu.gt.floristeria.service;
 import umg.edu.gt.floristeria.hash.CustomHashTable;
 import umg.edu.gt.floristeria.model.ItemFloral;
 import umg.edu.gt.floristeria.model.ProveedorOrigen;
+import umg.edu.gt.floristeria.model.TipoCliente;
 
 import java.sql.CallableStatement;
 import java.sql.Connection;
@@ -155,6 +156,34 @@ public class DatabaseCatalogoSource implements CatalogoSource {
         long elapsedMs = (System.nanoTime() - t0) / 1_000_000;
         System.out.printf("Oracle: cargadas %d marcas en %d ms%n", filas, elapsedMs);
         return marcas;
+    }
+
+    @Override
+    public CustomHashTable<Integer, TipoCliente> cargarTiposCliente() throws SQLException {
+        final String query =
+                "SELECT id_tipo_cliente, nombre_tipo, descuento_base "
+              + "FROM   TIPO_CLIENTE";
+        CustomHashTable<Integer, TipoCliente> tipos = new CustomHashTable<>();
+        long t0 = System.nanoTime();
+        int filas = 0;
+
+        try (Connection conn = DriverManager.getConnection(url, user, password);
+             Statement  stmt = conn.createStatement();
+             ResultSet  rs   = stmt.executeQuery(query)) {
+
+            while (rs.next()) {
+                TipoCliente tc = new TipoCliente(
+                        rs.getInt("id_tipo_cliente"),
+                        rs.getString("nombre_tipo"),
+                        rs.getDouble("descuento_base"));
+                tipos.put(tc.id(), tc);
+                filas++;
+            }
+        }
+
+        long elapsedMs = (System.nanoTime() - t0) / 1_000_000;
+        System.out.printf("Oracle: cargados %d tipos de cliente en %d ms%n", filas, elapsedMs);
+        return tipos;
     }
 
     @Override

@@ -3,6 +3,7 @@ package umg.edu.gt.floristeria.service;
 import umg.edu.gt.floristeria.hash.CustomHashTable;
 import umg.edu.gt.floristeria.model.ItemFloral;
 import umg.edu.gt.floristeria.model.ProveedorOrigen;
+import umg.edu.gt.floristeria.model.TipoCliente;
 
 /**
  * Implementación de {@link CatalogoSource} que genera ítems florales y
@@ -28,6 +29,14 @@ public class SyntheticCatalogoSource implements CatalogoSource {
             new ProveedorOrigen(5, "Finca Países Bajos S.A.", "Holanda"),
             new ProveedorOrigen(6, "Floricola Quiteña",       "Ecuador"),
             new ProveedorOrigen(7, "Cooperativa Antigua",     "Guatemala")
+    };
+
+    /** Los 4 tipos coinciden con los datos semilla de {@code install.sql}. */
+    private static final TipoCliente[] TIPOS_BASE = {
+            new TipoCliente(1, "Minorista Regular",      0.00),
+            new TipoCliente(2, "Mayorista Alianzas",    10.50),
+            new TipoCliente(3, "Eventos Premium",        5.00),
+            new TipoCliente(4, "Floristería Afiliada",  15.00)
     };
 
     private final int totalItems;
@@ -63,8 +72,18 @@ public class SyntheticCatalogoSource implements CatalogoSource {
     }
 
     @Override
+    public CustomHashTable<Integer, TipoCliente> cargarTiposCliente() {
+        CustomHashTable<Integer, TipoCliente> tipos = new CustomHashTable<>();
+        for (TipoCliente tc : TIPOS_BASE) {
+            tipos.put(tc.id(), tc);
+        }
+        return tipos;
+    }
+
+    @Override
     public String descripcion() {
         return "Datos sintéticos (" + totalItems + " ítems, "
-                + PROVEEDORES_BASE.length + " marcas)";
+                + PROVEEDORES_BASE.length + " marcas, "
+                + TIPOS_BASE.length + " tipos de cliente)";
     }
 }

@@ -293,4 +293,40 @@ public class CommercialGraph {
             System.err.println("Error al construir grafo trazabilidad-inversa: " + e.getMessage());
         }
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CONSULTA 6 — Tipo de cliente → Clientes que pertenecen a ese tipo
+    //              (visualiza la tercera tabla hash: TIPO_CLIENTE)
+    // ─────────────────────────────────────────────────────────────────────────
+    public void construirGrafoTipoClientes(int idTipo) {
+        nodos.clear();
+        aristas.clear();
+        if (oracleAusente("tipo-clientes")) return;
+
+        String query =
+                "SELECT tc.id_tipo_cliente, tc.nombre_tipo, " +
+                "c.id_cliente, c.nombre_completo " +
+                "FROM   TIPO_CLIENTE tc " +
+                "JOIN   CLIENTE c ON c.id_tipo_cliente = tc.id_tipo_cliente " +
+                "WHERE  tc.id_tipo_cliente = ?";
+
+        try (Connection conn = DriverManager.getConnection(url, user, password);
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+
+            pstmt.setInt(1, idTipo);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    String tipId = "TIP_" + rs.getInt("id_tipo_cliente");
+                    String cliId = "CLI_" + rs.getInt("id_cliente");
+
+                    agregarNodo(tipId, rs.getString("nombre_tipo"),     "TIPO");
+                    agregarNodo(cliId, rs.getString("nombre_completo"), "CLIENTE");
+
+                    agregarArista(tipId, cliId, "CLASIFICA");
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al construir grafo tipo-clientes: " + e.getMessage());
+        }
+    }
 }

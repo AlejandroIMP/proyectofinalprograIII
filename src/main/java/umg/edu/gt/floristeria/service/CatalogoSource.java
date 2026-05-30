@@ -3,6 +3,7 @@ package umg.edu.gt.floristeria.service;
 import umg.edu.gt.floristeria.hash.CustomHashTable;
 import umg.edu.gt.floristeria.model.ItemFloral;
 import umg.edu.gt.floristeria.model.ProveedorOrigen;
+import umg.edu.gt.floristeria.model.TipoCliente;
 
 /**
  * Abstracción de una fuente de catálogo de ítems florales.
@@ -41,6 +42,17 @@ public interface CatalogoSource {
      * @throws Exception cuando la fuente subyacente falla
      */
     CustomHashTable<Integer, ProveedorOrigen> cargarMarcas() throws Exception;
+
+    /**
+     * Construye y retorna el catálogo de tipos de cliente indexado por su ID.
+     * Se carga en una tabla hash <em>separada</em> (la tercera estructura del
+     * sistema, junto a productos y marcas) para que las búsquedas por tipo de
+     * cliente puedan medirse de forma independiente.
+     *
+     * @return tabla hash con los tipos de cliente disponibles
+     * @throws Exception cuando la fuente subyacente falla
+     */
+    CustomHashTable<Integer, TipoCliente> cargarTiposCliente() throws Exception;
 
     /**
      * @return nombre legible de la fuente para mostrarlo en la GUI o en logs

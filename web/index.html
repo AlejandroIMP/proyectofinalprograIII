@@ -248,6 +248,7 @@
       <option value="proveedor-impacto">Impacto de Proveedor</option>
       <option value="cliente-productos-anio">Productos Cliente por Año</option>
       <option value="trazabilidad-inversa">Trazabilidad Inversa (por Ítem)</option>
+      <option value="tipo-clientes">Tipo de Cliente → Clientes</option>
     </select>
 
     <label for="inp-id">ID:</label>
@@ -322,6 +323,9 @@
     <div class="leyenda-item">
       <div class="dot" style="background:#FFCD37;border-color:#FFA500"></div>Proveedor / Finca
     </div>
+    <div class="leyenda-item">
+      <div class="dot" style="background:#C39BD3;border-color:#7D3C98;clip-path:polygon(50% 0,100% 100%,0 100%)"></div>Tipo de Cliente
+    </div>
   </div>
 </div><!-- /panel-grafos -->
 
@@ -336,8 +340,12 @@
     <select id="sel-hash" onchange="onHashTipoChange()">
       <option value="catalogo">Catálogo de Ítems Florales</option>
       <option value="marcas">Proveedores / Marcas</option>
+      <option value="tipos-cliente">Tipos de Cliente</option>
     </select>
     <button class="btn" onclick="cargarHash()">▶ Cargar</button>
+    <input type="number" id="h-buscar-id" placeholder="Buscar ID" style="width:100px"
+           onkeydown="if(event.key==='Enter') buscarHash()"/>
+    <button class="btn-sec" onclick="buscarHash()">🔍 Buscar</button>
     <button class="btn-sec" onclick="descargarReporte('productos')">📄 Reporte 4.1 (Word)</button>
     <button class="btn-sec" onclick="descargarReporte('producto-marca')">📄 Reporte 4.2 (Word)</button>
 
@@ -364,6 +372,13 @@
       <input type="number" id="addm-id" placeholder="ID" style="width:80px"/>
       <input type="text" id="addm-finca" placeholder="Nombre de la finca"/>
       <input type="text" id="addm-pais" placeholder="País"/>
+      <button class="btn" onclick="agregarHash()">Agregar</button>
+    </div>
+    <div class="add-row" id="hash-add-tipos" style="display:none">
+      <strong style="color:#2d6a4f;font-size:.85rem">➕ Agregar tipo de cliente:</strong>
+      <input type="number" id="addt-id" placeholder="ID" style="width:80px"/>
+      <input type="text" id="addt-nombre" placeholder="Nombre del tipo"/>
+      <input type="number" id="addt-descuento" placeholder="Descuento %" step="0.01" style="width:120px"/>
       <button class="btn" onclick="agregarHash()">Agregar</button>
     </div>
     <div class="add-hint">💡 Tip: con capacidad 101, IDs como 50 y 151 caen en el mismo slot → colisión garantizada.</div>
@@ -394,7 +409,8 @@
     'cliente-productos':       { param: 'cliente',   ph: 'Ej: 1',  def: 1,  anio: false },
     'proveedor-impacto':       { param: 'proveedor', ph: 'Ej: 5',  def: 5,  anio: false },
     'cliente-productos-anio':  { param: 'cliente',   ph: 'Ej: 1',  def: 1,  anio: true  },
-    'trazabilidad-inversa':    { param: 'item',      ph: 'Ej: 50', def: 50, anio: false }
+    'trazabilidad-inversa':    { param: 'item',      ph: 'Ej: 50', def: 50, anio: false },
+    'tipo-clientes':           { param: 'tipo',      ph: 'Ej: 2',  def: 2,  anio: false }
   };
 
   /* ── Opciones Vis.js ─────────────────────────────────────────── */
@@ -403,7 +419,8 @@
       CLIENTE:   { color:{background:'#97C2FC',border:'#2B7CE9'}, shape:'ellipse' },
       FACTURA:   { color:{background:'#FB7E81',border:'#FA0A10'}, shape:'box' },
       ITEM:      { color:{background:'#7BE141',border:'#41A906'}, shape:'diamond' },
-      PROVEEDOR: { color:{background:'#FFCD37',border:'#FFA500'}, shape:'hexagon' }
+      PROVEEDOR: { color:{background:'#FFCD37',border:'#FFA500'}, shape:'hexagon' },
+      TIPO:      { color:{background:'#C39BD3',border:'#7D3C98'}, shape:'triangle' }
     },
     edges: {
       arrows:{to:{enabled:true,scaleFactor:.85}},
@@ -565,9 +582,13 @@
       const barW  = Math.min(120, len * 30);
       const color = `hsl(${hue}, 70%, 50%)`;
 
-      // Chips de ítems según tipo de tabla
+      // Chips de ítems según tipo de tabla.
+      // Orden importa: tipos-cliente y catálogo comparten "nombre", así que se
+      // discrimina por campos exclusivos (descuento → tipo, precio → catálogo).
       const chips = items.map(it => {
-        if (it.nombre !== undefined) {
+        if (it.descuento !== undefined) {
+          return `<span class="item-chip">#${it.id} · ${escHtml(it.nombre)} (${it.descuento}% desc.)</span>`;
+        } else if (it.precio !== undefined) {
           return `<span class="item-chip">#${it.id} · ${escHtml(it.nombre)} ($${it.precio.toFixed(2)})</span>`;
         } else {
           return `<span class="item-chip">#${it.id} · ${escHtml(it.nombreFinca)} (${escHtml(it.pais)})</span>`;
@@ -617,8 +638,9 @@
      ════════════════════════════════════════════════════════════════ */
   function onHashTipoChange() {
     const tipo = document.getElementById('sel-hash').value;
-    document.getElementById('hash-add-catalogo').style.display = tipo === 'catalogo' ? 'flex' : 'none';
-    document.getElementById('hash-add-marcas').style.display   = tipo === 'marcas'   ? 'flex' : 'none';
+    document.getElementById('hash-add-catalogo').style.display = tipo === 'catalogo'      ? 'flex' : 'none';
+    document.getElementById('hash-add-marcas').style.display   = tipo === 'marcas'        ? 'flex' : 'none';
+    document.getElementById('hash-add-tipos').style.display    = tipo === 'tipos-cliente' ? 'flex' : 'none';
   }
 
   function mostrarBanner(clase, texto) {
@@ -639,12 +661,18 @@
       if (!id || !nombre || !precio || !prov) { mostrarBanner('err', '⚠ Completa ID, nombre, precio e ID de proveedor.'); return; }
       cuerpo.set('id', id); cuerpo.set('nombre', nombre);
       cuerpo.set('precio', precio); cuerpo.set('idProveedor', prov);
-    } else {
+    } else if (tipo === 'marcas') {
       const id = document.getElementById('addm-id').value.trim();
       const finca = document.getElementById('addm-finca').value.trim();
       const pais = document.getElementById('addm-pais').value.trim();
       if (!id || !finca || !pais) { mostrarBanner('err', '⚠ Completa ID, nombre de finca y país.'); return; }
       cuerpo.set('id', id); cuerpo.set('nombreFinca', finca); cuerpo.set('pais', pais);
+    } else {
+      const id = document.getElementById('addt-id').value.trim();
+      const nombre = document.getElementById('addt-nombre').value.trim();
+      const descuento = document.getElementById('addt-descuento').value.trim();
+      if (!id || !nombre || descuento === '') { mostrarBanner('err', '⚠ Completa ID, nombre y descuento.'); return; }
+      cuerpo.set('id', id); cuerpo.set('nombre', nombre); cuerpo.set('descuento', descuento);
     }
 
     let res;
@@ -673,6 +701,33 @@
     // Refrescar la tabla resaltando el slot afectado
     _slotResaltar = res.slot;
     _itemsCache = null;                  // invalidar cache de ítems
+    await cargarHash();
+  }
+
+  /* ════════════════════════════════════════════════════════════════
+     BÚSQUEDA EN TABLA HASH (GET ?buscar= → slot, probes, tiempo)
+     ════════════════════════════════════════════════════════════════ */
+  async function buscarHash() {
+    const tipo = document.getElementById('sel-hash').value;
+    const id   = document.getElementById('h-buscar-id').value.trim();
+    if (id === '') { mostrarBanner('err', '⚠ Escribe un ID para buscar.'); return; }
+
+    let res;
+    try {
+      const r = await fetch(`${API}/api/hash/${tipo}?buscar=${encodeURIComponent(id)}`);
+      res = await r.json();
+    } catch (e) {
+      mostrarBanner('err', '⚠ No se pudo conectar con la API. ' + e.message);
+      return;
+    }
+
+    if (res.found) {
+      mostrarBanner('ok', `🔍 #${res.id} encontrado en el slot ${res.slot} · ${res.probes} probe(s) · ${res.tiempo}.`);
+      _slotResaltar = res.slot;          // se resaltará al recargar la tabla
+    } else {
+      mostrarBanner('col', `🔍 #${res.id} NO está en la tabla (se revisó el slot ${res.slot}, ${res.probes} probe(s), ${res.tiempo}).`);
+      _slotResaltar = null;
+    }
     await cargarHash();
   }
 

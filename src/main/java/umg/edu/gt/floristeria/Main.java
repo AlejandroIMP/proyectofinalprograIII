@@ -5,6 +5,7 @@ import umg.edu.gt.floristeria.hash.CustomHashTable;
 import umg.edu.gt.floristeria.hash.CustomHashTable.SearchResult;
 import umg.edu.gt.floristeria.model.ItemFloral;
 import umg.edu.gt.floristeria.model.ProveedorOrigen;
+import umg.edu.gt.floristeria.model.TipoCliente;
 import umg.edu.gt.floristeria.service.CatalogoSource;
 import umg.edu.gt.floristeria.service.CatalogoSources;
 import umg.edu.gt.floristeria.service.DatabaseCatalogoSource;
@@ -52,9 +53,11 @@ public class Main {
         CatalogoSource source = seleccionarFuente(args);
         CustomHashTable<Integer, ItemFloral>       catalogo;
         CustomHashTable<Integer, ProveedorOrigen>  marcas;
+        CustomHashTable<Integer, TipoCliente>      tipos;
         try {
             catalogo = source.cargar();
             marcas   = source.cargarMarcas();
+            tipos    = source.cargarTiposCliente();
         } catch (Exception ex) {
             System.err.println("ERROR cargando catálogo desde " + source.descripcion()
                     + ": " + ex.getMessage());
@@ -82,18 +85,20 @@ public class Main {
         // Sección 3.4 — salida controlada: libera estructuras al recibir Ctrl+C o SIGTERM
         final CustomHashTable<Integer, ItemFloral>      _cat = catalogo;
         final CustomHashTable<Integer, ProveedorOrigen> _mar = marcas;
+        final CustomHashTable<Integer, TipoCliente>     _tip = tipos;
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             System.out.println();
             System.out.println("[SHUTDOWN] Liberando estructuras en memoria...");
             System.out.printf("[SHUTDOWN] Catalogo  : %d items liberados%n",    _cat.getSize());
             System.out.printf("[SHUTDOWN] Marcas    : %d entradas liberadas%n", _mar.getSize());
+            System.out.printf("[SHUTDOWN] Tipos cli.: %d entradas liberadas%n", _tip.getSize());
             System.out.println("[SHUTDOWN] Conexiones Oracle: cerradas por try-with-resources.");
             System.out.println("[SHUTDOWN] Fin controlado del programa. Hasta pronto.");
         }, "shutdown-hook"));
 
         // API REST — secciones 4 y 5. Escucha en :8085 hasta Ctrl+C.
-        // Las tablas hash se pasan para exponerlas en /api/hash/catalogo y /api/hash/marcas.
-        GraphRestApi.iniciarServidor(catalogo, marcas);
+        // Las tablas hash se pasan para exponerlas en /api/hash/{catalogo,marcas,tipos-cliente}.
+        GraphRestApi.iniciarServidor(catalogo, marcas, tipos);
     }
 
     /* --------------------------------------------------------------------- */
