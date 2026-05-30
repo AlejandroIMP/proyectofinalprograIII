@@ -67,6 +67,37 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.5</version>
             </plugin>
+            <!-- Failsafe: corre los *IT.java en la fase 'verify' (no en 'test') -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>3.2.5</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- JaCoCo: cobertura HTML en target/site/jacoco/index.html tras 'verify' -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.13</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals><goal>prepare-agent</goal></goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>verify</phase>
+                        <goals><goal>report</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
@@ -120,6 +151,19 @@
                         <version>3.3.0</version>
                         <configuration>
                             <mainClass>umg.edu.gt.floristeria.Main</mainClass>
+                            <environmentVariables>
+                                <ORACLE_URL>${oracle.url}</ORACLE_URL>
+                                <ORACLE_USER>${oracle.user}</ORACLE_USER>
+                                <ORACLE_PASS>${oracle.pass}</ORACLE_PASS>
+                            </environmentVariables>
+                        </configuration>
+                    </plugin>
+                    <!-- Failsafe con credenciales Oracle: activa los IT en 'mvn verify -Pdbfloristeria' -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <version>3.2.5</version>
+                        <configuration>
                             <environmentVariables>
                                 <ORACLE_URL>${oracle.url}</ORACLE_URL>
                                 <ORACLE_USER>${oracle.user}</ORACLE_USER>

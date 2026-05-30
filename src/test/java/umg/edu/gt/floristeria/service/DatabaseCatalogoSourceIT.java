@@ -6,6 +6,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import umg.edu.gt.floristeria.hash.CustomHashTable;
 import umg.edu.gt.floristeria.model.ItemFloral;
 import umg.edu.gt.floristeria.model.ProveedorOrigen;
+import umg.edu.gt.floristeria.model.TipoCliente;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -64,5 +65,20 @@ class DatabaseCatalogoSourceIT {
         DatabaseCatalogoSource source = DatabaseCatalogoSource.fromEnv();
         assertTrue(source.descripcion().startsWith("Oracle"),
                 "la descripción debe comenzar con 'Oracle' para distinguirla del sintético");
+    }
+
+    @Test
+    @DisplayName("cargarTiposCliente() trae los 4 tipos sembrados por install.sql")
+    void cargarTiposCliente_trae4Tipos() throws Exception {
+        DatabaseCatalogoSource source = DatabaseCatalogoSource.fromEnv();
+        CustomHashTable<Integer, TipoCliente> tipos = source.cargarTiposCliente();
+
+        assertTrue(tipos.getSize() >= 4,
+                "esperaba al menos los 4 tipos sembrados en install.sql");
+        // Tipo 2 = "Mayorista Alianzas" con descuento 10.50
+        TipoCliente t2 = tipos.get(2).value();
+        assertNotNull(t2, "esperaba el tipo de cliente id=2");
+        assertEquals(10.50, t2.descuento(), 1e-6,
+                "el descuento base del tipo 2 (Mayorista Alianzas) en install.sql es 10.50");
     }
 }

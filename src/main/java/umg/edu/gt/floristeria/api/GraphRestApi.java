@@ -66,7 +66,65 @@ public class GraphRestApi {
     private static CustomHashTable<Integer, TipoCliente>     tiposRef;
 
     /**
+     * Variante testeable de {@link #iniciarServidor(CustomHashTable, CustomHashTable, CustomHashTable)}:
+     * permite especificar el puerto y devuelve la referencia al servidor.
+     * <p>
+     * Útil para pruebas automatizadas — un test puede pedir el puerto {@code 0}
+     * para obtener uno efímero asignado por el SO, leer el puerto real con
+     * {@code server.getAddress().getPort()} y apagar al final con
+     * {@code server.stop(0)}.
+     *
+     * @param port     puerto a usar; {@code 0} solicita uno efímero
+     * @param catalogo tabla hash del catálogo de ítems (nullable si no hay Oracle)
+     * @param marcas   tabla hash de proveedores/marcas (nullable)
+     * @param tipos    tabla hash de tipos de cliente (nullable)
+     * @return el servidor ya iniciado
+     * @throws IOException si el bind falla (p. ej. puerto ocupado)
+     */
+    public static HttpServer iniciarServidor(int port,
+            CustomHashTable<Integer, ItemFloral>      catalogo,
+            CustomHashTable<Integer, ProveedorOrigen> marcas,
+            CustomHashTable<Integer, TipoCliente>     tipos) throws IOException {
+        catalogoRef = catalogo;
+        marcasRef   = marcas;
+        tiposRef    = tipos;
+
+        HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
+
+        // Grafos
+        server.createContext("/api/grafo/trazabilidad",            new TrazabilidadHandler());
+        server.createContext("/api/grafo/cliente-productos-anio",  new ClienteProductosAnioHandler());
+        server.createContext("/api/grafo/cliente-productos",       new ClienteProductosHandler());
+        server.createContext("/api/grafo/proveedor-impacto",       new ProveedorImpactoHandler());
+        server.createContext("/api/grafo/trazabilidad-inversa",    new TrazabilidadInversaHandler());
+        server.createContext("/api/grafo/tipo-clientes",           new TipoClientesGrafoHandler());
+
+        // Tabla hash (GET = leer, POST = agregar con detección de colisión)
+        server.createContext("/api/hash/catalogo",                 new HashCatalogoHandler());
+        server.createContext("/api/hash/marcas",                   new HashMarcasHandler());
+        server.createContext("/api/hash/tipos-cliente",            new HashTiposClienteHandler());
+
+        // Escrituras comerciales y soporte de formularios
+        server.createContext("/api/grafo/factura",                 new FacturaHandler());
+        server.createContext("/api/clientes",                      new ClientesHandler());
+
+        // Reportes Microsoft Word (.docx) descargables
+        server.createContext("/api/reporte/productos.docx",        new ReporteProductosHandler());
+        server.createContext("/api/reporte/producto-marca.docx",   new ReporteMarcaHandler());
+        server.createContext("/api/reporte/grafo-cliente.docx",    new ReporteGrafoHandler());
+
+        // Frontend estático
+        server.createContext("/",                                  new StaticFileHandler());
+
+        server.setExecutor(null);
+        server.start();
+        return server;
+    }
+
+    /**
      * Lanza el servidor HTTP en el puerto 8085 y registra todos los endpoints.
+     * Entrypoint usado por {@code Main}; imprime el banner de bienvenida y
+     * captura las {@link IOException} para no abortar la JVM.
      *
      * @param catalogo tabla hash del catálogo de ítems (puede ser null si no hay Oracle)
      * @param marcas   tabla hash de proveedores/marcas (puede ser null)
@@ -76,41 +134,8 @@ public class GraphRestApi {
             CustomHashTable<Integer, ItemFloral>      catalogo,
             CustomHashTable<Integer, ProveedorOrigen> marcas,
             CustomHashTable<Integer, TipoCliente>     tipos) {
-        catalogoRef = catalogo;
-        marcasRef   = marcas;
-        tiposRef    = tipos;
-
         try {
-            HttpServer server = HttpServer.create(new InetSocketAddress(8085), 0);
-
-            // Grafos
-            server.createContext("/api/grafo/trazabilidad",            new TrazabilidadHandler());
-            server.createContext("/api/grafo/cliente-productos-anio",  new ClienteProductosAnioHandler());
-            server.createContext("/api/grafo/cliente-productos",       new ClienteProductosHandler());
-            server.createContext("/api/grafo/proveedor-impacto",       new ProveedorImpactoHandler());
-            server.createContext("/api/grafo/trazabilidad-inversa",    new TrazabilidadInversaHandler());
-            server.createContext("/api/grafo/tipo-clientes",           new TipoClientesGrafoHandler());
-
-            // Tabla hash (GET = leer, POST = agregar con detección de colisión)
-            server.createContext("/api/hash/catalogo",                 new HashCatalogoHandler());
-            server.createContext("/api/hash/marcas",                   new HashMarcasHandler());
-            server.createContext("/api/hash/tipos-cliente",            new HashTiposClienteHandler());
-
-            // Escrituras comerciales y soporte de formularios
-            server.createContext("/api/grafo/factura",                 new FacturaHandler());
-            server.createContext("/api/clientes",                      new ClientesHandler());
-
-            // Reportes Microsoft Word (.docx) descargables
-            server.createContext("/api/reporte/productos.docx",        new ReporteProductosHandler());
-            server.createContext("/api/reporte/producto-marca.docx",   new ReporteMarcaHandler());
-            server.createContext("/api/reporte/grafo-cliente.docx",    new ReporteGrafoHandler());
-
-            // Frontend estático
-            server.createContext("/",                                  new StaticFileHandler());
-
-            server.setExecutor(null);
-            server.start();
-
+            iniciarServidor(8085, catalogo, marcas, tipos);
             System.out.println("\n====================================================");
             System.out.println(" API REST NATIVA ESCUCHANDO EN: http://localhost:8085");
             System.out.println(" Frontend  : http://localhost:8085/");
